@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Flame, Dumbbell, Egg, Check, Plus, Minus, 
   HelpCircle, Utensils, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, 
-  Sparkles, X, Wand2, Info, CheckCircle2, Share2, AlertCircle 
+  Sparkles, X, Wand2, Info, CheckCircle2, Share2, AlertCircle, Edit3 
 } from 'lucide-react';
 import { HOSTEL_BREAKFAST_OPTIONS, FOOD_BASE_CATEGORIES, PORTION_SIZES } from '../data/defaultData';
 
@@ -18,6 +18,12 @@ export default function TrackerTab({
   const [isBreakfastPickerOpen, setIsBreakfastPickerOpen] = useState(false);
   const [isCustomFoodModalOpen, setIsCustomFoodModalOpen] = useState(false);
   const [showPortionGuide, setShowPortionGuide] = useState(false);
+
+  // Target meal for adding custom item: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  const [targetMeal, setTargetMeal] = useState('lunch');
+
+  // Estimator Mode: 'visual' (3-tap wizard) | 'manual' (exact numbers)
+  const [estimatorMode, setEstimatorMode] = useState('visual');
 
   // Estimator state
   const [selectedBaseId, setSelectedBaseId] = useState('dal_legume');
@@ -82,39 +88,68 @@ export default function TrackerTab({
     setCustomDishProtein(est.pro);
   };
 
+  // Open modal pre-focused on a meal
+  const openAddModalForMeal = (meal) => {
+    setTargetMeal(meal);
+    setCustomDishName('');
+    const est = computeVisualEstimate(selectedBaseId, selectedPortionId, isExtraOily);
+    setCustomDishCalories(est.cal);
+    setCustomDishProtein(est.pro);
+    setCustomDishPortion(est.portionLabel);
+    setIsCustomFoodModalOpen(true);
+  };
+
+  // Filter custom items by meal
+  const breakfastCustomItems = customItems.filter(it => it.meal === 'breakfast');
+  const lunchCustomItems = customItems.filter(it => it.meal === 'lunch');
+  const dinnerCustomItems = customItems.filter(it => it.meal === 'dinner');
+  const snackCustomItems = customItems.filter(it => it.meal === 'snack' || !it.meal);
+
   // Curry eggs check & double counting prevention
   const curryEggsCount = (dinner.hasEggCurry ? 1 : 0) + (breakfast.isEggCurry ? 1 : 0);
   const totalEggsToday = standaloneEggs + curryEggsCount;
 
-  // Macros calculations
-  const breakfastCalories = breakfast.calories || 0;
-  const breakfastProtein = breakfast.protein || 0;
+  // Base Macros calculations
+  const baseBreakfastCal = breakfast.calories || 0;
+  const baseBreakfastPro = breakfast.protein || 0;
+  const customBreakfastCal = breakfastCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customBreakfastPro = parseFloat(breakfastCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+  const totalBreakfastCal = baseBreakfastCal + customBreakfastCal;
+  const totalBreakfastPro = parseFloat((baseBreakfastPro + customBreakfastPro).toFixed(1));
 
-  const lunchCalories = Math.round(
+  const baseLunchCal = Math.round(
     (lunch.riceKatoris * 180) + 
     (lunch.curryKatoris * 140) + 
     (lunch.dalKatoris * 150)
   );
-  const lunchProtein = parseFloat((
+  const baseLunchPro = parseFloat((
     (lunch.riceKatoris * 3.8) + 
     (lunch.curryKatoris * 3.5) + 
     (lunch.dalKatoris * 7.0)
   ).toFixed(1));
+  const customLunchCal = lunchCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customLunchPro = parseFloat(lunchCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+  const totalLunchCal = baseLunchCal + customLunchCal;
+  const totalLunchPro = parseFloat((baseLunchPro + customLunchPro).toFixed(1));
 
-  const dinnerCalories = Math.round(
+  const baseDinnerCal = Math.round(
     (dinner.riceKatoris * 180) + 
     (dinner.chapatis * 110) + 
     (dinner.hasChickenCurry ? 260 : 0) + 
     (dinner.hasEggCurry ? 180 : 0) + 
     (dinner.hasVegCurry ? 130 : 0)
   );
-  const dinnerProtein = parseFloat((
+  const baseDinnerPro = parseFloat((
     (dinner.riceKatoris * 3.8) + 
     (dinner.chapatis * 3.2) + 
     (dinner.hasChickenCurry ? 18.0 : 0) + 
     (dinner.hasEggCurry ? 8.5 : 0) + 
     (dinner.hasVegCurry ? 3.0 : 0)
   ).toFixed(1));
+  const customDinnerCal = dinnerCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customDinnerPro = parseFloat(dinnerCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+  const totalDinnerCal = baseDinnerCal + customDinnerCal;
+  const totalDinnerPro = parseFloat((baseDinnerPro + customDinnerPro).toFixed(1));
 
   const eggCalories = standaloneEggs * 75;
   const eggProtein = parseFloat((standaloneEggs * 6.5).toFixed(1));
@@ -134,11 +169,14 @@ export default function TrackerTab({
   const extraCalories = milkCal + bananaCal + peanutCal + soyaCal;
   const extraProtein = parseFloat((milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
 
-  const customItemsCalories = customItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
-  const customItemsProtein = parseFloat(customItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+  const customSnackCal = snackCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customSnackPro = parseFloat(snackCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
 
-  const totalCalories = breakfastCalories + lunchCalories + dinnerCalories + eggCalories + extraCalories + customItemsCalories;
-  const totalProtein = parseFloat((breakfastProtein + lunchProtein + dinnerProtein + eggProtein + extraProtein + customItemsProtein).toFixed(1));
+  const allCustomCal = customItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const allCustomPro = parseFloat(customItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+
+  const totalCalories = baseBreakfastCal + baseLunchCal + baseDinnerCal + eggCalories + extraCalories + allCustomCal;
+  const totalProtein = parseFloat((baseBreakfastPro + baseLunchPro + baseDinnerPro + eggProtein + extraProtein + allCustomPro).toFixed(1));
 
   const calPercentage = Math.min(100, Math.round((totalCalories / targetCalories) * 100));
   const proPercentage = Math.min(100, Math.round((totalProtein / targetProtein) * 100));
@@ -167,7 +205,8 @@ export default function TrackerTab({
       name: customDishName.trim(),
       portion: customDishPortion,
       calories: Number(customDishCalories) || 0,
-      protein: Number(customDishProtein) || 0
+      protein: Number(customDishProtein) || 0,
+      meal: targetMeal
     };
 
     setDailyLog(prev => ({
@@ -228,13 +267,13 @@ export default function TrackerTab({
               </div>
             </div>
 
-            {/* + Add Food Button in Hero Header */}
+            {/* Quick Estimator Button */}
             <button
-              onClick={() => setIsCustomFoodModalOpen(true)}
+              onClick={() => openAddModalForMeal('lunch')}
               className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all duration-200 active:scale-95 shadow-md shadow-emerald-950 flex items-center gap-1.5"
             >
               <Wand2 className="w-3.5 h-3.5" />
-              <span>+ Add Dish</span>
+              <span>Smart Estimator</span>
             </button>
           </div>
 
@@ -486,43 +525,95 @@ export default function TrackerTab({
         </div>
       </div>
 
-      {/* 4. Meals Timeline Cards */}
+      {/* 4. Meals Timeline Cards with Direct Custom Adding & Estimating */}
       <div className="space-y-3">
-        {/* Breakfast Card */}
+        {/* ===================== BREAKFAST CARD ===================== */}
         <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
-          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-2">
+          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Breakfast</span>
                 <h4 className="text-sm font-bold text-white">{breakfast.name}</h4>
               </div>
-              <button
-                onClick={() => setIsBreakfastPickerOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-emerald-400 border border-white/[0.06] transition active:scale-95"
-              >
-                Change
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setIsBreakfastPickerOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-[11px] font-bold text-slate-300 border border-white/[0.06] transition active:scale-95"
+                >
+                  Change
+                </button>
+                <button
+                  onClick={() => openAddModalForMeal('breakfast')}
+                  className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-[11px] font-bold text-emerald-400 border border-emerald-500/30 transition active:scale-95 flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Custom Item</span>
+                </button>
+              </div>
             </div>
+
             <div className="flex items-center gap-2 text-xs font-mono">
-              <span className="text-white font-bold">{breakfast.calories} kcal</span>
+              <span className="text-white font-bold">{totalBreakfastCal} kcal</span>
               <span className="text-slate-500">•</span>
-              <span className="text-emerald-400 font-bold">{breakfast.protein}g protein</span>
+              <span className="text-emerald-400 font-bold">{totalBreakfastPro}g protein</span>
+              {breakfastCustomItems.length > 0 && (
+                <span className="text-[10px] font-sans text-slate-500">
+                  (incl. {breakfastCustomItems.length} custom {breakfastCustomItems.length === 1 ? 'item' : 'items'})
+                </span>
+              )}
             </div>
+
+            {/* Custom items added specifically to Breakfast */}
+            {breakfastCustomItems.length > 0 && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  Added to Breakfast:
+                </span>
+                <div className="space-y-1">
+                  {breakfastCustomItems.map(item => (
+                    <div key={item.id} className="p-2 rounded-xl bg-slate-900 border border-white/[0.05] flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-white">{item.name}</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({item.portion})</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-white font-bold">{item.calories} kcal</span>
+                        <span className="text-emerald-400">{item.protein}g</span>
+                        <button
+                          onClick={() => handleRemoveCustomItem(item.id)}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 ml-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Lunch Card */}
+        {/* ===================== LUNCH CARD ===================== */}
         <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
           <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Lunch (Hostel Mess)</span>
                 <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
-                  <span className="text-white font-bold">{lunchCalories} kcal</span>
+                  <span className="text-white font-bold">{totalLunchCal} kcal</span>
                   <span className="text-slate-500">•</span>
-                  <span className="text-emerald-400 font-bold">{lunchProtein}g protein</span>
+                  <span className="text-emerald-400 font-bold">{totalLunchPro}g protein</span>
                 </div>
               </div>
+
+              <button
+                onClick={() => openAddModalForMeal('lunch')}
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-[11px] font-bold text-emerald-400 border border-emerald-500/30 transition active:scale-95 flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Custom Item / Curry</span>
+              </button>
             </div>
 
             {/* Steppers for Rice, Curry, Dal */}
@@ -605,21 +696,58 @@ export default function TrackerTab({
                 </div>
               </div>
             </div>
+
+            {/* Custom items added specifically to Lunch */}
+            {lunchCustomItems.length > 0 && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  Added to Lunch:
+                </span>
+                <div className="space-y-1">
+                  {lunchCustomItems.map(item => (
+                    <div key={item.id} className="p-2 rounded-xl bg-slate-900 border border-white/[0.05] flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-white">{item.name}</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({item.portion})</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-white font-bold">{item.calories} kcal</span>
+                        <span className="text-emerald-400">{item.protein}g</span>
+                        <button
+                          onClick={() => handleRemoveCustomItem(item.id)}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 ml-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Dinner Card */}
+        {/* ===================== DINNER CARD ===================== */}
         <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
           <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Dinner (Hostel Mess)</span>
                 <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
-                  <span className="text-white font-bold">{dinnerCalories} kcal</span>
+                  <span className="text-white font-bold">{totalDinnerCal} kcal</span>
                   <span className="text-slate-500">•</span>
-                  <span className="text-emerald-400 font-bold">{dinnerProtein}g protein</span>
+                  <span className="text-emerald-400 font-bold">{totalDinnerPro}g protein</span>
                 </div>
               </div>
+
+              <button
+                onClick={() => openAddModalForMeal('dinner')}
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-[11px] font-bold text-emerald-400 border border-emerald-500/30 transition active:scale-95 flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Custom Item / Curry</span>
+              </button>
             </div>
 
             {/* Steppers for Rice & Chapatis */}
@@ -734,31 +862,75 @@ export default function TrackerTab({
                 🥗 Veg
               </button>
             </div>
+
+            {/* Custom items added specifically to Dinner */}
+            {dinnerCustomItems.length > 0 && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-1.5">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                  Added to Dinner:
+                </span>
+                <div className="space-y-1">
+                  {dinnerCustomItems.map(item => (
+                    <div key={item.id} className="p-2 rounded-xl bg-slate-900 border border-white/[0.05] flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-white">{item.name}</span>
+                        <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({item.portion})</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className="text-white font-bold">{item.calories} kcal</span>
+                        <span className="text-emerald-400">{item.protein}g</span>
+                        <button
+                          onClick={() => handleRemoveCustomItem(item.id)}
+                          className="text-slate-500 hover:text-rose-400 p-0.5 ml-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Custom Items / Unknown Curries Logged */}
-        {customItems.length > 0 && (
-          <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
-            <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-2">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                Discovered Foods & Custom Curries
-              </span>
-              <div className="space-y-1.5">
-                {customItems.map((item) => (
-                  <div key={item.id} className="p-2.5 rounded-xl bg-slate-900/80 border border-white/[0.06] flex items-center justify-between text-xs">
+        {/* ===================== SNACKS & EXTRA FOODS ===================== */}
+        <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
+          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Extra Snacks & Add-ons</span>
+                <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
+                  <span className="text-white font-bold">{extraCalories + customSnackCal} kcal</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-400 font-bold">{(extraProtein + customSnackPro).toFixed(1)}g protein</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => openAddModalForMeal('snack')}
+                className="px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-[11px] font-bold text-emerald-400 border border-emerald-500/30 transition active:scale-95 flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Custom Snack</span>
+              </button>
+            </div>
+
+            {/* Custom snacks list */}
+            {snackCustomItems.length > 0 && (
+              <div className="pt-2 border-t border-white/[0.06] space-y-1">
+                {snackCustomItems.map(item => (
+                  <div key={item.id} className="p-2 rounded-xl bg-slate-900 border border-white/[0.05] flex items-center justify-between text-xs">
                     <div>
-                      <p className="font-bold text-white">{item.name}</p>
-                      <p className="text-[10px] text-slate-400">{item.portion}</p>
+                      <span className="font-bold text-white">{item.name}</span>
+                      <span className="text-[10px] text-slate-400 ml-1.5 font-normal">({item.portion})</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right font-mono">
-                        <span className="font-bold text-white block">{item.calories} kcal</span>
-                        <span className="text-[10px] text-emerald-400">{item.protein}g pro</span>
-                      </div>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span className="text-white font-bold">{item.calories} kcal</span>
+                      <span className="text-emerald-400">{item.protein}g</span>
                       <button
                         onClick={() => handleRemoveCustomItem(item.id)}
-                        className="w-6 h-6 rounded-lg text-slate-500 hover:text-rose-400 flex items-center justify-center transition"
+                        className="text-slate-500 hover:text-rose-400 p-0.5 ml-1"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -766,9 +938,9 @@ export default function TrackerTab({
                   </div>
                 ))}
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* 5. Breakfast Selection Modal Drawer */}
@@ -777,7 +949,7 @@ export default function TrackerTab({
           <div className="bg-slate-900 border border-white/[0.1] rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-extrabold text-white text-base">Select Breakfast</h3>
+                <h3 className="font-extrabold text-white text-base">Select Mess Breakfast</h3>
                 <p className="text-xs text-slate-400">Common Mangaluru mess breakfast options</p>
               </div>
               <button
@@ -825,14 +997,17 @@ export default function TrackerTab({
         </div>
       )}
 
-      {/* 6. Visual 3-Tap Macro Estimator Modal (For Unknown Dishes) */}
+      {/* 6. Smart Food Estimator & Custom Item Modal (Unified for Breakfast, Lunch, Dinner, Snack) */}
       {isCustomFoodModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-900 border border-white/[0.1] rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-extrabold text-white text-base">Visual Macro Estimator</h3>
-                <p className="text-xs text-slate-400">Estimate any unknown curry or dish in 3 taps</p>
+                <h3 className="font-extrabold text-white text-base">
+                  Add to {targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)}
+                </h3>
+                <p className="text-xs text-slate-400">Estimate macros or input known values</p>
               </div>
               <button
                 onClick={() => setIsCustomFoodModalOpen(false)}
@@ -842,19 +1017,63 @@ export default function TrackerTab({
               </button>
             </div>
 
-            {/* Step 1: Dish Name */}
+            {/* Meal Selector Pill & Mode Switcher */}
+            <div className="space-y-2">
+              {/* Target Meal Switcher */}
+              <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950 rounded-2xl border border-white/[0.06] text-center text-[10px] font-bold">
+                {['breakfast', 'lunch', 'dinner', 'snack'].map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setTargetMeal(m)}
+                    className={`py-1.5 rounded-xl transition ${
+                      targetMeal === m ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              {/* Mode Switcher: Visual vs Manual */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-slate-950 rounded-2xl border border-white/[0.06] text-center text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setEstimatorMode('visual')}
+                  className={`py-1.5 rounded-xl transition flex items-center justify-center gap-1.5 ${
+                    estimatorMode === 'visual' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Wand2 className="w-3.5 h-3.5" />
+                  <span>3-Tap Estimator</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEstimatorMode('manual')}
+                  className={`py-1.5 rounded-xl transition flex items-center justify-center gap-1.5 ${
+                    estimatorMode === 'manual' ? 'bg-slate-800 text-emerald-400 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Exact Input</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dish Name */}
             <div>
-              <label className="text-xs text-slate-300 block mb-1 font-semibold">1. Dish Name</label>
+              <label className="text-xs text-slate-300 block mb-1 font-semibold">Dish / Item Name</label>
               <input
                 type="text"
-                placeholder="e.g. Mixed Veg Curry, Rajma, Sambar..."
+                placeholder="e.g. Mixed Veg Curry, Rajma, Fish Fry, Parotta..."
                 value={customDishName}
                 onChange={(e) => setCustomDishName(e.target.value)}
                 className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                autoFocus
               />
               {/* Quick suggestions */}
               <div className="flex flex-wrap gap-1 mt-1.5">
-                {['Hostel Veg Curry', 'Dal Tadka', 'Chicken Gravy', 'Egg Roast', 'Kerala Parotta'].map((sug) => (
+                {['Hostel Veg Curry', 'Dal Tadka', 'Chicken Gravy', 'Fish Fry', 'Egg Bhurji', 'Parotta', 'Biryani'].map((sug) => (
                   <button
                     key={sug}
                     type="button"
@@ -867,77 +1086,122 @@ export default function TrackerTab({
               </div>
             </div>
 
-            {/* Step 2: Base Category */}
-            <div>
-              <label className="text-xs text-slate-300 block mb-1 font-semibold">2. Base Texture</label>
-              <div className="grid grid-cols-2 gap-1.5">
-                {FOOD_BASE_CATEGORIES.map((base) => {
-                  const isSelected = selectedBaseId === base.id;
-                  return (
-                    <button
-                      key={base.id}
-                      type="button"
-                      onClick={() => handleBaseChange(base.id)}
-                      className={`p-2.5 rounded-2xl border text-left text-xs transition active:scale-95 ${
-                        isSelected 
-                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/40' 
-                          : 'bg-slate-950 border-white/[0.06] text-slate-300 hover:border-white/[0.15]'
-                      }`}
-                    >
-                      <p className="font-bold text-xs truncate">{base.name.split('/')[0]}</p>
-                      <p className="text-[10px] text-slate-400 truncate">{base.example}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* VISUAL 3-TAP ESTIMATOR MODE */}
+            {estimatorMode === 'visual' ? (
+              <>
+                {/* Step 2: Base Category */}
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1 font-semibold">Base Texture</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {FOOD_BASE_CATEGORIES.map((base) => {
+                      const isSelected = selectedBaseId === base.id;
+                      return (
+                        <button
+                          key={base.id}
+                          type="button"
+                          onClick={() => handleBaseChange(base.id)}
+                          className={`p-2.5 rounded-2xl border text-left text-xs transition active:scale-95 ${
+                            isSelected 
+                              ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/40' 
+                              : 'bg-slate-950 border-white/[0.06] text-slate-300 hover:border-white/[0.15]'
+                          }`}
+                        >
+                          <p className="font-bold text-xs truncate">{base.name.split('/')[0]}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{base.example}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* Step 3: Portion Size */}
-            <div>
-              <label className="text-xs text-slate-300 block mb-1 font-semibold">3. Portion Size</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {PORTION_SIZES.map((p) => {
-                  const isSelected = selectedPortionId === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handlePortionChange(p.id)}
-                      className={`p-2 rounded-2xl border text-center text-xs transition active:scale-95 ${
-                        isSelected 
-                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold' 
-                          : 'bg-slate-950 border-white/[0.06] text-slate-300'
-                      }`}
-                    >
-                      <span className="block font-bold text-[11px]">{p.label.split('(')[0]}</span>
-                      <span className="text-[9px] text-slate-400">{p.volumeMl ? `${p.volumeMl}ml` : 'pcs'}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                {/* Step 3: Portion Size */}
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1 font-semibold">Portion Size</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {PORTION_SIZES.map((p) => {
+                      const isSelected = selectedPortionId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handlePortionChange(p.id)}
+                          className={`p-2 rounded-2xl border text-center text-xs transition active:scale-95 ${
+                            isSelected 
+                              ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold' 
+                              : 'bg-slate-950 border-white/[0.06] text-slate-300'
+                          }`}
+                        >
+                          <span className="block font-bold text-[11px]">{p.label.split('(')[0]}</span>
+                          <span className="text-[9px] text-slate-400">{p.volumeMl ? `${p.volumeMl}ml` : 'pcs'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* Extra Oily toggle */}
-            <div className="bg-slate-950 p-2.5 rounded-2xl border border-white/[0.06] flex items-center justify-between text-xs">
-              <div>
-                <span className="font-bold text-white block">Extra Oily / Restaurant Gravy?</span>
-                <span className="text-[10px] text-slate-400">+60 kcal cooking oil</span>
+                {/* Extra Oily toggle */}
+                <div className="bg-slate-950 p-2.5 rounded-2xl border border-white/[0.06] flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-white block">Extra Oily / Restaurant Gravy?</span>
+                    <span className="text-[10px] text-slate-400">+60 kcal cooking oil</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleOilToggle(!isExtraOily)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                      isExtraOily ? 'bg-amber-500 text-slate-950' : 'bg-slate-850 text-slate-400 border border-white/[0.08]'
+                    }`}
+                  >
+                    {isExtraOily ? 'Extra Oil' : 'Normal'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* MANUAL MODE: Input Exact Calories & Protein */
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-300 block mb-1 font-semibold">Portion Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 1 plate, 2 pieces, 250ml"
+                    value={customDishPortion}
+                    onChange={(e) => setCustomDishPortion(e.target.value)}
+                    className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-1 font-semibold">Calories (kcal)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 250"
+                      value={customDishCalories}
+                      onChange={(e) => setCustomDishCalories(Number(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2 text-sm text-amber-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-1 font-semibold">Protein (g)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="e.g. 14.5"
+                      value={customDishProtein}
+                      onChange={(e) => setCustomDishProtein(Number(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2 text-sm text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => handleOilToggle(!isExtraOily)}
-                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
-                  isExtraOily ? 'bg-amber-500 text-slate-950' : 'bg-slate-850 text-slate-400 border border-white/[0.08]'
-                }`}
-              >
-                {isExtraOily ? 'Extra Oil' : 'Normal'}
-              </button>
-            </div>
+            )}
 
             {/* Output Calculation Banner */}
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Macros:</span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                  {estimatorMode === 'visual' ? 'Estimated Macros:' : 'Custom Item Value:'}
+                </span>
                 <span className="text-xs font-bold text-white">{customDishPortion}</span>
               </div>
               <div className="text-right font-mono">
@@ -946,6 +1210,7 @@ export default function TrackerTab({
               </div>
             </div>
 
+            {/* Actions */}
             <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
@@ -960,7 +1225,7 @@ export default function TrackerTab({
                 disabled={!customDishName.trim()}
                 className="flex-1 py-3 rounded-2xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-md shadow-emerald-950 disabled:opacity-50"
               >
-                Add to Day's Intake
+                Add to {targetMeal.charAt(0).toUpperCase() + targetMeal.slice(1)}
               </button>
             </div>
           </div>

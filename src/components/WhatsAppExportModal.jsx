@@ -68,6 +68,11 @@ export default function WhatsAppExportModal({
   const totalCal = breakfastCal + lunchCal + dinnerCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal + customCal;
   const totalPro = parseFloat((breakfastPro + lunchPro + dinnerPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro + customPro).toFixed(1));
 
+  const customItemsList = dailyLog?.customItems || [];
+  const customItemsText = customItemsList.length > 0 
+    ? `\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Custom Added Dishes:*\n` + customItemsList.map(it => `• [${(it.meal || 'extra').toUpperCase()}] ${it.name} (${it.portion}): +${it.calories} kcal, +${it.protein}g`).join('\n')
+    : '';
+
   const summaryText = `*Thadi (തടി) Bulking Log — ${todayStr}* 🏋️‍♂️
 ━━━━━━━━━━━━━━━━━━━━
 🔥 *Calories:* ${totalCal} / ${targetCalories} kcal (${Math.round((totalCal / targetCalories) * 100)}%)
@@ -78,7 +83,7 @@ export default function WhatsAppExportModal({
 • Nandini Milk: ${dailyLog?.extraFoods?.milk500ml ? '✅ 500ml' : (dailyLog?.extraFoods?.milk250ml ? '✅ 250ml' : '❌ Missed')}
 • Bananas: ${(dailyLog?.extraFoods?.bananasCount || 0) >= 2 ? `✅ ${dailyLog?.extraFoods?.bananasCount} pcs` : '❌ Missed'}
 • Peanuts: ${dailyLog?.extraFoods?.peanuts30g ? '✅ 30g' : '❌ Missed'}
-• Soya Chunks: ${dailyLog?.extraFoods?.soyaChunks30g ? '✅ 30g (kettle steeped)' : '❌ Missed'}
+• Soya Chunks: ${dailyLog?.extraFoods?.soyaChunks30g ? '✅ 30g (kettle steeped)' : '❌ Missed'}${customItemsText}
 ━━━━━━━━━━━━━━━━━━━━
 💰 *Grocery Spending:* ₹${budgetSpent} / ₹${budgetCap} hard cap
 *Thadi App — തടി • Lean Bulking*`;
