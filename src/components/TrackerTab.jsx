@@ -2,18 +2,26 @@ import React, { useState } from 'react';
 import { 
   Flame, Dumbbell, Egg, Check, Plus, Minus, 
   HelpCircle, Utensils, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, 
-  Sparkles, X, PlusCircle, Tag
+  Sparkles, X, PlusCircle, Wand2, Info 
 } from 'lucide-react';
 import { HOSTEL_BREAKFAST_OPTIONS } from '../data/defaultData';
 
-export const QUICK_DISH_TEMPLATES = [
-  { name: 'High Protein Curry (Chicken / Fish / Paneer)', calories: 250, protein: 18, category: 'Protein Heavy' },
-  { name: 'Legume Curry (Rajma / Chole / Dal Tadka)', calories: 180, protein: 8, category: 'Medium Protein' },
-  { name: 'Light Veg Curry (Sambar / Rasam / Mixed Veg)', calories: 120, protein: 3, category: 'Light Veg' },
-  { name: 'Extra Cooked Rice (1 standard bowl)', calories: 180, protein: 4, category: 'Carbs' },
-  { name: 'Wheat Roti / Chapati (2 pieces)', calories: 220, protein: 6, category: 'Carbs' },
-  { name: 'Bread Omelette (2 eggs + 2 slices)', calories: 340, protein: 16, category: 'Breakfast' },
-  { name: 'Biryani / Pulao (1 standard plate)', calories: 550, protein: 20, category: 'Heavy Meal' }
+// Visual base categories with standard values per 100ml/g
+export const FOOD_BASE_CATEGORIES = [
+  { id: 'chicken_fish', name: 'Chicken / Fish (Curry with meat)', calPer100ml: 140, proPer100ml: 11, icon: '🍗', example: 'Chicken curry, fish curry' },
+  { id: 'paneer_soya', name: 'Paneer / Soya (Gravy)', calPer100ml: 150, proPer100ml: 9, icon: '🧀', example: 'Paneer butter masala, soya curry' },
+  { id: 'dal_legume', name: 'Dal / Chana / Rajma / Sprouts', calPer100ml: 95, proPer100ml: 4.5, icon: '🍲', example: 'Dal tadka, rajma, chole' },
+  { id: 'veg_curry', name: 'Veg Curry / Sambar / Rasam', calPer100ml: 65, proPer100ml: 1.8, icon: '🥗', example: 'Aloo gobi, mixed veg, sambar' },
+  { id: 'rice_biryani', name: 'Cooked Rice / Pulao / Biryani', calPer100ml: 130, proPer100ml: 2.7, icon: '🍚', example: 'White rice, veg pulao, biryani' },
+  { id: 'bread_roti', name: 'Roti / Chapati / Parotta', calPer100ml: 280, proPer100ml: 8.0, icon: '🫓', isPieceBase: true, example: 'Chapatis, rotis, parottas' },
+  { id: 'fried_snack', name: 'Snack / Street Food / Fast Food', calPer100ml: 220, proPer100ml: 5.0, icon: '🍟', example: 'Samosa, maggi, egg puff, roll' }
+];
+
+// Portion multipliers based on standard utensils
+export const PORTION_SIZES = [
+  { id: 'small_bowl', label: 'Small Katori / Half Cup', volumeMl: 120, pieceCount: 1, desc: 'Small cup (~120 ml)' },
+  { id: 'standard_bowl', label: 'Standard Hostel Bowl (Katori)', volumeMl: 200, pieceCount: 2, desc: 'Typical mess bowl (~200 ml)' },
+  { id: 'large_bowl', label: 'Large Bowl / Deep Plate', volumeMl: 320, pieceCount: 3, desc: 'Heaped serving (~320 ml)' }
 ];
 
 export default function TrackerTab({ 
@@ -26,15 +34,21 @@ export default function TrackerTab({
   onOpenExport
 }) {
   const [showKettleTip, setShowKettleTip] = useState(false);
+  const [showHandGuide, setShowHandGuide] = useState(false);
   const [isBreakfastPickerOpen, setIsBreakfastPickerOpen] = useState(false);
   const [isCustomFoodModalOpen, setIsCustomFoodModalOpen] = useState(false);
-  const [targetMealForCustom, setTargetMealForCustom] = useState('lunch'); // 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+  // Estimator Mode: 'visual' (smart wizard) vs 'manual' (type numbers)
+  const [estimatorMode, setEstimatorMode] = useState('visual');
+  const [selectedBaseId, setSelectedBaseId] = useState('dal_legume');
+  const [selectedPortionId, setSelectedPortionId] = useState('standard_bowl');
+  const [isExtraOily, setIsExtraOily] = useState(false);
 
   // Custom food form state
   const [customDishName, setCustomDishName] = useState('');
-  const [customDishCalories, setCustomDishCalories] = useState(200);
-  const [customDishProtein, setCustomDishProtein] = useState(10);
-  const [customDishPortion, setCustomDishPortion] = useState('1 bowl');
+  const [customDishCalories, setCustomDishCalories] = useState(190);
+  const [customDishProtein, setCustomDishProtein] = useState(9);
+  const [customDishPortion, setCustomDishPortion] = useState('1 bowl (~200ml)');
 
   const { 
     breakfast, 
@@ -44,6 +58,53 @@ export default function TrackerTab({
     standaloneEggs,
     customItems = [] 
   } = dailyLog;
+
+  // Auto-calculate macros when visual wizard selections change
+  const computeVisualEstimate = (baseId, portionId, oily) => {
+    const base = FOOD_BASE_CATEGORIES.find(b => b.id === baseId) || FOOD_BASE_CATEGORIES[2];
+    const portion = PORTION_SIZES.find(p => p.id === portionId) || PORTION_SIZES[1];
+
+    let cal = 0;
+    let pro = 0;
+
+    if (base.isPieceBase) {
+      cal = Math.round(portion.pieceCount * 110);
+      pro = parseFloat((portion.pieceCount * 3.2).toFixed(1));
+    } else {
+      const vol = portion.volumeMl;
+      cal = Math.round((vol / 100) * base.calPer100ml);
+      pro = parseFloat(((vol / 100) * base.proPer100ml).toFixed(1));
+    }
+
+    if (oily) {
+      cal += 60; // ~1 tsp extra cooking oil/ghee
+    }
+
+    return { cal, pro, portionLabel: portion.label };
+  };
+
+  const handleBaseChange = (baseId) => {
+    setSelectedBaseId(baseId);
+    const est = computeVisualEstimate(baseId, selectedPortionId, isExtraOily);
+    setCustomDishCalories(est.cal);
+    setCustomDishProtein(est.pro);
+    setCustomDishPortion(est.portionLabel);
+  };
+
+  const handlePortionChange = (portionId) => {
+    setSelectedPortionId(portionId);
+    const est = computeVisualEstimate(selectedBaseId, portionId, isExtraOily);
+    setCustomDishCalories(est.cal);
+    setCustomDishProtein(est.pro);
+    setCustomDishPortion(est.portionLabel);
+  };
+
+  const handleOilToggle = (oily) => {
+    setIsExtraOily(oily);
+    const est = computeVisualEstimate(selectedBaseId, selectedPortionId, oily);
+    setCustomDishCalories(est.cal);
+    setCustomDishProtein(est.pro);
+  };
 
   // Curry eggs count
   const curryEggsCount = (dinner.hasEggCurry ? 1 : 0) + (breakfast.isEggCurry ? 1 : 0);
@@ -97,7 +158,6 @@ export default function TrackerTab({
   const extraCalories = milkCal + bananaCal + peanutCal + soyaCal;
   const extraProtein = parseFloat((milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
 
-  // Custom items macro sum
   const customItemsCalories = customItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
   const customItemsProtein = parseFloat(customItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
 
@@ -117,8 +177,7 @@ export default function TrackerTab({
       name: customDishName.trim(),
       portion: customDishPortion,
       calories: Number(customDishCalories) || 0,
-      protein: Number(customDishProtein) || 0,
-      mealType: targetMealForCustom
+      protein: Number(customDishProtein) || 0
     };
 
     setDailyLog(prev => ({
@@ -135,12 +194,6 @@ export default function TrackerTab({
       ...prev,
       customItems: (prev.customItems || []).filter(it => it.id !== id)
     }));
-  };
-
-  const handleSelectTemplate = (tpl) => {
-    setCustomDishName(tpl.name.split('(')[0].trim());
-    setCustomDishCalories(tpl.calories);
-    setCustomDishProtein(tpl.protein);
   };
 
   const changeDateBy = (days) => {
@@ -426,22 +479,53 @@ export default function TrackerTab({
 
       {/* 4. Hostel Meals & Custom Dishes */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h3 className="font-bold text-white text-base">Hostel Meals & Curries</h3>
-            <p className="text-xs text-slate-400">Measured in standard <strong>katoris (≈200ml bowls)</strong></p>
+            <p className="text-xs text-slate-400">Portions in standard <strong>bowls (katoris ≈ 200ml)</strong></p>
           </div>
-          <button
-            onClick={() => {
-              setTargetMealForCustom('lunch');
-              setIsCustomFoodModalOpen(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold transition active:scale-95"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>+ Add Other Dish / Curry</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHandGuide(!showHandGuide)}
+              className="text-[11px] font-medium text-slate-400 hover:text-white flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-full border border-slate-800"
+            >
+              <Info className="w-3 h-3 text-emerald-400" />
+              <span>Hand Guide</span>
+            </button>
+            <button
+              onClick={() => setIsCustomFoodModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold transition active:scale-95"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>Estimate Any Dish</span>
+            </button>
+          </div>
         </div>
+
+        {/* Hostel Hand & Utensil Visual Guide */}
+        {showHandGuide && (
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 animate-fadeIn">
+            <p className="font-semibold text-emerald-400">✋ Visual No-Scale Estimation Rule of Thumb:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
+                <span className="font-bold text-white block">1 Closed Fist ✊</span>
+                <span className="text-slate-400">≈ 1 bowl rice (~180 kcal)</span>
+              </div>
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
+                <span className="font-bold text-white block">1 Palm ✋</span>
+                <span className="text-slate-400">≈ 1 chicken/fish piece (~25g protein)</span>
+              </div>
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
+                <span className="font-bold text-white block">1 Cupped Hand 🫲</span>
+                <span className="text-slate-400">≈ 1 handful peanuts (30g, ~170 kcal)</span>
+              </div>
+              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
+                <span className="font-bold text-white block">1 Steel Katori 🥣</span>
+                <span className="text-slate-400">≈ 200ml (2.5 bowls = 500ml bottle)</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Breakfast Picker */}
         <div className="space-y-1.5">
@@ -527,7 +611,7 @@ export default function TrackerTab({
             <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
               <div>
                 <span className="text-slate-300 font-semibold block">Veg Curry</span>
-                <span className="text-[10px] text-slate-500">Hostel curry</span>
+                <span className="text-[10px] text-slate-500">Mess curry</span>
               </div>
               <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
                 <button
@@ -705,14 +789,17 @@ export default function TrackerTab({
         )}
       </section>
 
-      {/* Custom Food & Curry Modal */}
+      {/* Visual Portion & Macro Estimator Modal */}
       {isCustomFoodModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-bold text-white text-base">Add Any Dish / Curry</h3>
-                <p className="text-xs text-slate-400">Log any curry, special dish, or snack eaten outside</p>
+                <h3 className="font-bold text-white text-base flex items-center gap-1.5">
+                  <Wand2 className="w-4 h-4 text-emerald-400" />
+                  Smart Portion & Macro Estimator
+                </h3>
+                <p className="text-xs text-slate-400">Estimate any curry or dish in 3 visual taps</p>
               </div>
               <button 
                 onClick={() => setIsCustomFoodModalOpen(false)}
@@ -722,85 +809,118 @@ export default function TrackerTab({
               </button>
             </div>
 
-            {/* Quick Templates */}
+            {/* Step 1: Dish Name */}
             <div>
-              <span className="text-[11px] font-semibold text-slate-400 block mb-2 uppercase">Quick Templates (Tap to fill):</span>
+              <label className="text-xs text-slate-400 block mb-1 font-medium">1. What dish are you eating?</label>
+              <input
+                type="text"
+                placeholder="e.g. Fish Curry, Paneer Bhurji, Sambar, Maggi, Biryani..."
+                value={customDishName}
+                onChange={(e) => setCustomDishName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                autoFocus
+              />
+            </div>
+
+            {/* Step 2: What is the main food base? */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1.5 font-medium">2. What is the primary ingredient base?</label>
               <div className="grid grid-cols-2 gap-1.5">
-                {QUICK_DISH_TEMPLATES.map((tpl, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleSelectTemplate(tpl)}
-                    className="p-2 rounded-lg bg-slate-950 hover:bg-slate-850 border border-slate-800 text-left text-xs transition"
-                  >
-                    <p className="font-semibold text-white truncate">{tpl.name.split('(')[0]}</p>
-                    <p className="text-[10px] text-emerald-400">~{tpl.calories} kcal • {tpl.protein}g pro</p>
-                  </button>
-                ))}
+                {FOOD_BASE_CATEGORIES.map((base) => {
+                  const isSelected = selectedBaseId === base.id;
+                  return (
+                    <button
+                      key={base.id}
+                      type="button"
+                      onClick={() => handleBaseChange(base.id)}
+                      className={`p-2.5 rounded-xl border text-left text-xs transition flex items-center gap-2 ${
+                        isSelected 
+                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-semibold' 
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-base">{base.icon}</span>
+                      <div className="truncate">
+                        <p className="truncate text-xs font-semibold">{base.name.split('(')[0]}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{base.example}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <form onSubmit={handleAddCustomFood} className="space-y-3 pt-2 border-t border-slate-800">
+            {/* Step 3: Portion Size */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1.5 font-medium">3. How big is your portion?</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {PORTION_SIZES.map((p) => {
+                  const isSelected = selectedPortionId === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handlePortionChange(p.id)}
+                      className={`p-2 rounded-xl border text-center text-xs transition ${
+                        isSelected 
+                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-semibold' 
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="block font-semibold text-xs">{p.label.split('(')[0]}</span>
+                      <span className="text-[10px] text-slate-500">{p.desc.split('(')[1]?.replace(')', '') || p.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Oiliness check */}
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Dish Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Paneer Butter Masala, Fish Curry, Maggi..."
-                  value={customDishName}
-                  onChange={(e) => setCustomDishName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  required
-                />
+                <span className="text-xs font-semibold text-white">Is it extra oily / hotel style?</span>
+                <span className="text-[10px] text-slate-500 block">Adds ~60 kcal from extra oil/ghee</span>
               </div>
+              <button
+                type="button"
+                onClick={() => handleOilToggle(!isExtraOily)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
+                  isExtraOily ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-850 text-slate-400 hover:text-white'
+                }`}
+              >
+                {isExtraOily ? 'Extra Oily (+60 kcal)' : 'Normal'}
+              </button>
+            </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Portion</label>
-                  <input
-                    type="text"
-                    placeholder="1 bowl"
-                    value={customDishPortion}
-                    onChange={(e) => setCustomDishPortion(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Calories (kcal)</label>
-                  <input
-                    type="number"
-                    value={customDishCalories}
-                    onChange={(e) => setCustomDishCalories(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-400 block mb-1">Protein (g)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={customDishProtein}
-                    onChange={(e) => setCustomDishProtein(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+            {/* Estimated result display */}
+            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Nutrition:</span>
+                <span className="text-sm font-bold text-white">{customDishPortion}</span>
               </div>
+              <div className="text-right">
+                <span className="text-base font-bold text-emerald-400">{customDishCalories} kcal</span>
+                <span className="text-xs text-slate-400 block">• {customDishProtein}g protein</span>
+              </div>
+            </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCustomFoodModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm"
-                >
-                  Add to Today's Log
-                </button>
-              </div>
-            </form>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setIsCustomFoodModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddCustomFood}
+                disabled={!customDishName.trim()}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm disabled:opacity-50"
+              >
+                Add to Daily Intake
+              </button>
+            </div>
           </div>
         </div>
       )}
