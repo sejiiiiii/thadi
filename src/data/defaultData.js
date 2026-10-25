@@ -426,3 +426,19 @@ export function getQuickCommerceLinks(searchQuery) {
     zomato: `https://www.zomato.com/search?q=${encoded}`
   };
 }
+
+export const FOOD_BASE_CATEGORIES = [
+  { id: 'water_veg', name: 'Watery / Clear Veg', calPer100ml: 45, proPer100ml: 1.2, example: 'Rasam, sambar, clear veg curry' },
+  { id: 'thick_veg', name: 'Thick Veg / Coconut Curry', calPer100ml: 85, proPer100ml: 2.5, example: 'Avial, kurma, mixed veg kootu' },
+  { id: 'dal_legume', name: 'Dal / Chana / Rajma', calPer100ml: 120, proPer100ml: 6.0, example: 'Toor dal, chana masala, moong' },
+  { id: 'chicken_meat', name: 'Chicken / Fish / Meat Curry', calPer100ml: 160, proPer100ml: 11.5, example: 'Hostel chicken gravy with 2 pcs' },
+  { id: 'paneer_rich', name: 'Paneer / Rich Gravy', calPer100ml: 190, proPer100ml: 8.5, example: 'Paneer butter masala, rich gravy' },
+  { id: 'bread_flatbread', name: 'Bread / Roti / Parotta', isPieceBase: true, calPerPiece: 110, proPerPiece: 3.2, example: 'Roti, puri, Kerala parotta' }
+];
+
+export const PORTION_SIZES = [
+  { id: 'small_half_katori', label: 'Half Katori (~100ml)', volumeMl: 100, pieceCount: 1, desc: 'Small serving (cupped hand)' },
+  { id: 'standard_bowl', label: '1 Standard Bowl (~200ml)', volumeMl: 200, pieceCount: 2, desc: 'Standard hostel katori (fist size)' },
+  { id: 'heaping_plate', label: 'Large / Heaping Bowl (~350ml)', volumeMl: 350, pieceCount: 3, desc: 'Double serving (two open hands)' }
+];
+

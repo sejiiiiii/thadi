@@ -2,27 +2,9 @@ import React, { useState } from 'react';
 import { 
   Flame, Dumbbell, Egg, Check, Plus, Minus, 
   HelpCircle, Utensils, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, 
-  Sparkles, X, PlusCircle, Wand2, Info 
+  Sparkles, X, Wand2, Info, CheckCircle2, Share2, AlertCircle 
 } from 'lucide-react';
-import { HOSTEL_BREAKFAST_OPTIONS } from '../data/defaultData';
-
-// Visual base categories with standard values per 100ml/g
-export const FOOD_BASE_CATEGORIES = [
-  { id: 'chicken_fish', name: 'Chicken / Fish (Curry with meat)', calPer100ml: 140, proPer100ml: 11, icon: '🍗', example: 'Chicken curry, fish curry' },
-  { id: 'paneer_soya', name: 'Paneer / Soya (Gravy)', calPer100ml: 150, proPer100ml: 9, icon: '🧀', example: 'Paneer butter masala, soya curry' },
-  { id: 'dal_legume', name: 'Dal / Chana / Rajma / Sprouts', calPer100ml: 95, proPer100ml: 4.5, icon: '🍲', example: 'Dal tadka, rajma, chole' },
-  { id: 'veg_curry', name: 'Veg Curry / Sambar / Rasam', calPer100ml: 65, proPer100ml: 1.8, icon: '🥗', example: 'Aloo gobi, mixed veg, sambar' },
-  { id: 'rice_biryani', name: 'Cooked Rice / Pulao / Biryani', calPer100ml: 130, proPer100ml: 2.7, icon: '🍚', example: 'White rice, veg pulao, biryani' },
-  { id: 'bread_roti', name: 'Roti / Chapati / Parotta', calPer100ml: 280, proPer100ml: 8.0, icon: '🫓', isPieceBase: true, example: 'Chapatis, rotis, parottas' },
-  { id: 'fried_snack', name: 'Snack / Street Food / Fast Food', calPer100ml: 220, proPer100ml: 5.0, icon: '🍟', example: 'Samosa, maggi, egg puff, roll' }
-];
-
-// Portion multipliers based on standard utensils
-export const PORTION_SIZES = [
-  { id: 'small_bowl', label: 'Small Katori / Half Cup', volumeMl: 120, pieceCount: 1, desc: 'Small cup (~120 ml)' },
-  { id: 'standard_bowl', label: 'Standard Hostel Bowl (Katori)', volumeMl: 200, pieceCount: 2, desc: 'Typical mess bowl (~200 ml)' },
-  { id: 'large_bowl', label: 'Large Bowl / Deep Plate', volumeMl: 320, pieceCount: 3, desc: 'Heaped serving (~320 ml)' }
-];
+import { HOSTEL_BREAKFAST_OPTIONS, FOOD_BASE_CATEGORIES, PORTION_SIZES } from '../data/defaultData';
 
 export default function TrackerTab({ 
   dailyLog, 
@@ -33,33 +15,29 @@ export default function TrackerTab({
   targetProtein,
   onOpenExport
 }) {
-  const [showKettleTip, setShowKettleTip] = useState(false);
-  const [showHandGuide, setShowHandGuide] = useState(false);
   const [isBreakfastPickerOpen, setIsBreakfastPickerOpen] = useState(false);
   const [isCustomFoodModalOpen, setIsCustomFoodModalOpen] = useState(false);
+  const [showPortionGuide, setShowPortionGuide] = useState(false);
 
-  // Estimator Mode: 'visual' (smart wizard) vs 'manual' (type numbers)
-  const [estimatorMode, setEstimatorMode] = useState('visual');
+  // Estimator state
   const [selectedBaseId, setSelectedBaseId] = useState('dal_legume');
   const [selectedPortionId, setSelectedPortionId] = useState('standard_bowl');
   const [isExtraOily, setIsExtraOily] = useState(false);
-
-  // Custom food form state
   const [customDishName, setCustomDishName] = useState('');
   const [customDishCalories, setCustomDishCalories] = useState(190);
   const [customDishProtein, setCustomDishProtein] = useState(9);
-  const [customDishPortion, setCustomDishPortion] = useState('1 bowl (~200ml)');
+  const [customDishPortion, setCustomDishPortion] = useState('1 Standard Bowl (~200ml)');
 
   const { 
-    breakfast, 
-    lunch, 
-    dinner, 
-    extraFoods, 
-    standaloneEggs,
+    breakfast = { name: 'Dosa (3 medium) with Sambar', calories: 430, protein: 12, isEggCurry: false }, 
+    lunch = { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 }, 
+    dinner = { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true }, 
+    extraFoods = { milk500ml: true, milk250ml: false, bananasCount: 2, peanuts30g: true, soyaChunks30g: true }, 
+    standaloneEggs = 3,
     customItems = [] 
-  } = dailyLog;
+  } = dailyLog || {};
 
-  // Auto-calculate macros when visual wizard selections change
+  // Auto-calculate macros for visual estimator
   const computeVisualEstimate = (baseId, portionId, oily) => {
     const base = FOOD_BASE_CATEGORIES.find(b => b.id === baseId) || FOOD_BASE_CATEGORIES[2];
     const portion = PORTION_SIZES.find(p => p.id === portionId) || PORTION_SIZES[1];
@@ -76,9 +54,7 @@ export default function TrackerTab({
       pro = parseFloat(((vol / 100) * base.proPer100ml).toFixed(1));
     }
 
-    if (oily) {
-      cal += 60; // ~1 tsp extra cooking oil/ghee
-    }
+    if (oily) cal += 60;
 
     return { cal, pro, portionLabel: portion.label };
   };
@@ -106,7 +82,7 @@ export default function TrackerTab({
     setCustomDishProtein(est.pro);
   };
 
-  // Curry eggs count
+  // Curry eggs check & double counting prevention
   const curryEggsCount = (dinner.hasEggCurry ? 1 : 0) + (breakfast.isEggCurry ? 1 : 0);
   const totalEggsToday = standaloneEggs + curryEggsCount;
 
@@ -146,8 +122,8 @@ export default function TrackerTab({
   const milkCal = extraFoods.milk500ml ? 300 : (extraFoods.milk250ml ? 150 : 0);
   const milkPro = extraFoods.milk500ml ? 16.5 : (extraFoods.milk250ml ? 8.2 : 0);
 
-  const bananaCal = extraFoods.bananasCount * 100;
-  const bananaPro = parseFloat((extraFoods.bananasCount * 1.25).toFixed(1));
+  const bananaCal = (extraFoods.bananasCount || 0) * 100;
+  const bananaPro = parseFloat(((extraFoods.bananasCount || 0) * 1.25).toFixed(1));
 
   const peanutCal = extraFoods.peanuts30g ? 170 : 0;
   const peanutPro = extraFoods.peanuts30g ? 7.5 : 0;
@@ -167,7 +143,21 @@ export default function TrackerTab({
   const calPercentage = Math.min(100, Math.round((totalCalories / targetCalories) * 100));
   const proPercentage = Math.min(100, Math.round((totalProtein / targetProtein) * 100));
 
-  // Add Custom Food
+  // Date Navigation
+  const changeDateBy = (days) => {
+    const cur = new Date(selectedDateKey);
+    cur.setDate(cur.getDate() + days);
+    setSelectedDateKey(cur.toISOString().split('T')[0]);
+  };
+
+  const isToday = selectedDateKey === new Date().toISOString().split('T')[0];
+  const formattedDate = new Date(selectedDateKey).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric'
+  });
+
+  // Handlers for Add Custom Dish
   const handleAddCustomFood = (e) => {
     e.preventDefault();
     if (!customDishName.trim()) return;
@@ -196,614 +186,657 @@ export default function TrackerTab({
     }));
   };
 
-  const changeDateBy = (days) => {
-    const cur = new Date(selectedDateKey);
-    cur.setDate(cur.getDate() + days);
-    setSelectedDateKey(cur.toISOString().split('T')[0]);
-  };
-
-  const isToday = selectedDateKey === new Date().toISOString().split('T')[0];
-  const formattedDate = new Date(selectedDateKey).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric'
-  });
-
   return (
-    <div className="space-y-5 pb-20 md:pb-6 animate-fadeIn">
-      {/* 1. Date Switcher */}
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
+    <div className="space-y-4 pb-28 animate-fadeIn max-w-md md:max-w-xl mx-auto">
+      {/* 1. Date Header Pill Bar */}
+      <div className="flex items-center justify-between bg-slate-900/60 p-1.5 rounded-2xl border border-white/[0.08] shadow-sm">
         <button
           onClick={() => changeDateBy(-1)}
-          className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
-          title="Previous day"
+          className="w-8 h-8 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center transition active:scale-90"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="text-center">
-          <span className="text-xs font-bold text-white tracking-wide">
-            {isToday ? `Today (${formattedDate})` : formattedDate}
-          </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-white">{formattedDate}</span>
+          {isToday && (
+            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              Today
+            </span>
+          )}
         </div>
 
         <button
           onClick={() => changeDateBy(1)}
-          className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
-          title="Next day"
+          className="w-8 h-8 rounded-xl hover:bg-slate-800 text-slate-300 flex items-center justify-center transition active:scale-90"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* 2. Hero Progress Card */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">
-              Daily Target Surplus
-            </span>
-            <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-3xl font-black text-white">{totalCalories}</span>
-              <span className="text-xs text-slate-400">/ {targetCalories} kcal</span>
+      {/* 2. Hero Energy Gauge Card (Double-Bezel Architecture) */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-xl">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                Daily Energy & Protein
+              </span>
+              <div className="flex items-baseline gap-2 pt-1">
+                <h1 className="text-3xl font-black text-white font-mono tracking-tight">{totalCalories}</h1>
+                <span className="text-xs text-slate-400 font-medium">/ {targetCalories} kcal</span>
+              </div>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              {totalCalories >= targetCalories ? (
-                <span className="text-emerald-400 font-semibold">Lean bulk surplus achieved today! 🎉</span>
-              ) : (
-                <span><strong>{targetCalories - totalCalories} kcal</strong> needed today for clean muscle gain</span>
-              )}
-            </p>
+
+            {/* + Add Food Button in Hero Header */}
+            <button
+              onClick={() => setIsCustomFoodModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition-all duration-200 active:scale-95 shadow-md shadow-emerald-950 flex items-center gap-1.5"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>+ Add Dish</span>
+            </button>
           </div>
 
-          <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 self-start sm:self-auto sm:text-right min-w-[130px]">
-            <span className="text-[11px] text-slate-400 font-medium block">Protein Progress</span>
-            <span className="text-xl font-bold text-emerald-400">{totalProtein}g</span>
-            <span className="text-[11px] text-slate-500 block">Target: {targetProtein}g</span>
-          </div>
-        </div>
-
-        {/* Dual Progress Bars */}
-        <div className="space-y-2 mt-4 pt-4 border-t border-slate-800/80">
-          <div>
-            <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-              <span>Calories ({calPercentage}%)</span>
-              <span>{totalCalories >= targetCalories ? 'Target met' : `${targetCalories - totalCalories} left`}</span>
+          {/* Calorie Progress Bar */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-[11px]">
+              <span className="text-slate-400 font-medium">Calorie Target</span>
+              <span className="font-mono font-bold text-amber-400">{calPercentage}%</span>
             </div>
-            <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+            <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-white/[0.06]">
               <div 
-                className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 rounded-full transition-all duration-500"
                 style={{ width: `${calPercentage}%` }}
               />
             </div>
           </div>
 
-          <div>
-            <div className="flex justify-between text-[11px] text-slate-400 mb-1">
-              <span>Protein ({proPercentage}%)</span>
-              <span>{totalProtein >= targetProtein ? 'Target met' : `${(targetProtein - totalProtein).toFixed(1)}g left`}</span>
+          {/* Protein Bar */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between items-center text-[11px]">
+              <span className="text-slate-400 font-medium flex items-center gap-1.5">
+                <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Protein Goal ({totalProtein}g / {targetProtein}g)</span>
+              </span>
+              <span className="font-mono font-bold text-emerald-400">{proPercentage}%</span>
             </div>
-            <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+            <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-white/[0.06]">
               <div 
-                className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full transition-all duration-500"
                 style={{ width: `${proPercentage}%` }}
               />
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* 3. The 4 Bulking Staples Checklist */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-white text-base">The 4 Bulking Staples</h3>
-            <p className="text-xs text-slate-400">+775 kcal and +42g protein (under ₹2,000/mo cap)</p>
+          {/* Status Chip */}
+          <div className="pt-1 flex items-center justify-between text-xs">
+            <div className={`flex items-center gap-1.5 font-bold ${
+              totalCalories >= targetCalories ? 'text-emerald-400' : 'text-amber-400'
+            }`}>
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              <span>
+                {totalCalories >= targetCalories 
+                  ? `In Bulking Surplus 🔥 (+${totalCalories - targetCalories} kcal)` 
+                  : `${targetCalories - totalCalories} kcal remaining to hit surplus`}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setShowPortionGuide(!showPortionGuide)}
+              className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 underline"
+            >
+              <Info className="w-3 h-3" />
+              <span>Hostel Portions Guide</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowKettleTip(!showKettleTip)}
-            className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20"
-          >
-            <HelpCircle className="w-3 h-3" />
-            <span>Kettle Prep</span>
-          </button>
         </div>
+      </div>
 
-        {showKettleTip && (
-          <div className="bg-slate-950 p-3 rounded-xl border border-emerald-500/30 text-xs text-slate-300 space-y-1 animate-fadeIn">
-            <span className="font-semibold text-emerald-400">⚡ Soya Chunks Kettle Hack:</span>
-            <p>Boil water in your electric kettle. Pour into a bowl containing 30g dry soya chunks, cover with a plate for 8–10 mins. Squeeze water out and mix into your hostel dinner curry!</p>
+      {/* Optional Hostel Portion Helper Card */}
+      {showPortionGuide && (
+        <div className="p-4 rounded-3xl bg-slate-900/80 border border-white/[0.08] text-xs text-slate-300 space-y-2 animate-fadeIn">
+          <div className="flex items-center justify-between font-bold text-white">
+            <span className="flex items-center gap-1.5">
+              <Utensils className="w-4 h-4 text-emerald-400" />
+              <span>No-Scale Hostel Portion Estimator</span>
+            </span>
+            <button onClick={() => setShowPortionGuide(false)} className="text-slate-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
           </div>
-        )}
+          <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06]">
+              <span className="font-bold text-white block">1 Katori / Bowl (~200ml)</span>
+              <span className="text-slate-400">Equal to your closed fist size (Rice ~180 kcal, Dal ~150 kcal).</span>
+            </div>
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06]">
+              <span className="font-bold text-white block">1 Half Katori (~100ml)</span>
+              <span className="text-slate-400">Cupped hand volume. Ideal for thick gravies and curries.</span>
+            </div>
+          </div>
+        </div>
+      )}
 
-        <div className="space-y-2 pt-1">
-          {/* Milk */}
-          <div 
-            onClick={() => setDailyLog(prev => ({
-              ...prev,
-              extraFoods: { ...prev.extraFoods, milk500ml: !prev.extraFoods.milk500ml }
-            }))}
-            className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition select-none ${
-              extraFoods.milk500ml ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
-                extraFoods.milk500ml ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold' : 'border-slate-700'
-              }`}>
-                {extraFoods.milk500ml && <Check className="w-3.5 h-3.5" />}
-              </div>
+      {/* 3. Daily Bulking Staples Matrix (The 4 Hostel Pillars + 3 Eggs) */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-md">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <h3 className="font-extrabold text-sm text-white">Hostel Daily Bulking Staples</h3>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">Tap to Quick Log</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {/* 1. Nandini Toned Milk (500ml / 250ml) */}
+            <div className="p-3 rounded-2xl bg-slate-900/70 border border-white/[0.06] flex flex-col justify-between space-y-2">
               <div>
-                <p className="text-xs font-semibold text-white">Nandini Toned Milk (500ml)</p>
-                <p className="text-[11px] text-slate-500">+300 kcal • 16.5g protein (₹30/day)</p>
+                <span className="text-[10px] text-slate-400 block font-medium">🥛 Nandini Milk</span>
+                <span className="text-xs font-bold text-white">
+                  {extraFoods.milk500ml ? '500 ml (+300 kcal)' : (extraFoods.milk250ml ? '250 ml (+150 kcal)' : 'None')}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    extraFoods: { ...prev.extraFoods, milk500ml: !prev.extraFoods.milk500ml, milk250ml: false }
+                  }))}
+                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95 ${
+                    extraFoods.milk500ml
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-white/[0.06]'
+                  }`}
+                >
+                  500ml
+                </button>
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    extraFoods: { ...prev.extraFoods, milk250ml: !prev.extraFoods.milk250ml, milk500ml: false }
+                  }))}
+                  className={`flex-1 py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95 ${
+                    extraFoods.milk250ml
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-950 text-slate-400 hover:text-white border border-white/[0.06]'
+                  }`}
+                >
+                  250ml
+                </button>
               </div>
             </div>
-            <span className="text-[11px] font-semibold text-emerald-400">
-              {extraFoods.milk500ml ? 'Taken' : '+ Add'}
-            </span>
-          </div>
 
-          {/* Bananas */}
-          <div className={`p-3 rounded-xl border flex items-center justify-between transition ${
-            extraFoods.bananasCount === 2 ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-950 border-slate-800'
-          }`}>
-            <div className="flex items-center gap-3">
-              <div 
+            {/* 2. Bananas Stepper */}
+            <div className="p-3 rounded-2xl bg-slate-900/70 border border-white/[0.06] flex flex-col justify-between space-y-2">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">🍌 Ripe Bananas</span>
+                <span className="text-xs font-bold text-white">{extraFoods.bananasCount || 0} bananas</span>
+              </div>
+              <div className="flex items-center justify-between bg-slate-950 rounded-xl px-2 py-1 border border-white/[0.06]">
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    extraFoods: { ...prev.extraFoods, bananasCount: Math.max(0, (prev.extraFoods.bananasCount || 0) - 1) }
+                  }))}
+                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-white flex items-center justify-center active:scale-90"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="font-mono font-bold text-xs text-white">{extraFoods.bananasCount || 0}</span>
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    extraFoods: { ...prev.extraFoods, bananasCount: (prev.extraFoods.bananasCount || 0) + 1 }
+                  }))}
+                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-white flex items-center justify-center active:scale-90"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Roasted Peanuts */}
+            <div className="p-3 rounded-2xl bg-slate-900/70 border border-white/[0.06] flex flex-col justify-between space-y-2">
+              <div>
+                <span className="text-[10px] text-slate-400 block font-medium">🥜 Peanuts (30g)</span>
+                <span className="text-xs font-bold text-white">
+                  {extraFoods.peanuts30g ? '1 Handful (+170 kcal)' : 'Not taken'}
+                </span>
+              </div>
+              <button
                 onClick={() => setDailyLog(prev => ({
                   ...prev,
-                  extraFoods: { ...prev.extraFoods, bananasCount: prev.extraFoods.bananasCount >= 2 ? 0 : 2 }
+                  extraFoods: { ...prev.extraFoods, peanuts30g: !prev.extraFoods.peanuts30g }
                 }))}
-                className={`w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition ${
-                  extraFoods.bananasCount >= 2 ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold' : 'border-slate-700'
+                className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95 ${
+                  extraFoods.peanuts30g
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-950 text-slate-400 hover:text-white border border-white/[0.06]'
                 }`}
               >
-                {extraFoods.bananasCount >= 2 && <Check className="w-3.5 h-3.5" />}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-white">2 Fresh Bananas</p>
-                <p className="text-[11px] text-slate-500">+{extraFoods.bananasCount * 100} kcal • +{(extraFoods.bananasCount * 1.25).toFixed(1)}g protein</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setDailyLog(prev => ({
-                  ...prev,
-                  extraFoods: { ...prev.extraFoods, bananasCount: Math.max(0, prev.extraFoods.bananasCount - 1) }
-                }))}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <span className="text-xs font-bold text-white w-4 text-center">{extraFoods.bananasCount}</span>
-              <button
-                onClick={() => setDailyLog(prev => ({
-                  ...prev,
-                  extraFoods: { ...prev.extraFoods, bananasCount: Math.min(4, prev.extraFoods.bananasCount + 1) }
-                }))}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400"
-              >
-                <Plus className="w-3.5 h-3.5" />
+                {extraFoods.peanuts30g ? '✓ Logged' : 'Log 30g'}
               </button>
             </div>
-          </div>
 
-          {/* Peanuts */}
-          <div 
-            onClick={() => setDailyLog(prev => ({
-              ...prev,
-              extraFoods: { ...prev.extraFoods, peanuts30g: !prev.extraFoods.peanuts30g }
-            }))}
-            className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition select-none ${
-              extraFoods.peanuts30g ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
-                extraFoods.peanuts30g ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold' : 'border-slate-700'
-              }`}>
-                {extraFoods.peanuts30g && <Check className="w-3.5 h-3.5" />}
-              </div>
+            {/* 4. Soya Chunks (Kettle steeped) */}
+            <div className="p-3 rounded-2xl bg-slate-900/70 border border-white/[0.06] flex flex-col justify-between space-y-2">
               <div>
-                <p className="text-xs font-semibold text-white">Raw Peanuts (30g handful)</p>
-                <p className="text-[11px] text-slate-500">+170 kcal • 7.5g protein</p>
+                <span className="text-[10px] text-slate-400 block font-medium">🌱 Soya Chunks (30g)</span>
+                <span className="text-xs font-bold text-white">
+                  {extraFoods.soyaChunks30g ? '15.5g Protein' : 'Not taken'}
+                </span>
               </div>
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400">
-              {extraFoods.peanuts30g ? 'Eaten' : '+ Add'}
-            </span>
-          </div>
-
-          {/* Soya Chunks */}
-          <div 
-            onClick={() => setDailyLog(prev => ({
-              ...prev,
-              extraFoods: { ...prev.extraFoods, soyaChunks30g: !prev.extraFoods.soyaChunks30g }
-            }))}
-            className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition select-none ${
-              extraFoods.soyaChunks30g ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-950 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition ${
-                extraFoods.soyaChunks30g ? 'bg-emerald-500 border-emerald-500 text-slate-950 font-bold' : 'border-slate-700'
-              }`}>
-                {extraFoods.soyaChunks30g && <Check className="w-3.5 h-3.5" />}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Soya Chunks (30g dry, kettle cooked)</p>
-                <p className="text-[11px] text-slate-500">+105 kcal • 15.5g protein</p>
-              </div>
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400">
-              {extraFoods.soyaChunks30g ? 'Eaten' : '+ Add'}
-            </span>
-          </div>
-
-          {/* Daily Eggs */}
-          <div className="p-3 rounded-xl border border-slate-800 bg-slate-950 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 rounded-md bg-amber-500/15 text-amber-400 flex items-center justify-center">
-                <Egg className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-white">Daily 3 Eggs Goal</p>
-                <p className="text-[11px] text-slate-500">
-                  {curryEggsCount > 0 ? `${curryEggsCount} egg in curry + ${standaloneEggs} boiled` : `${standaloneEggs} boiled eggs logged`}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
               <button
                 onClick={() => setDailyLog(prev => ({
                   ...prev,
-                  standaloneEggs: Math.max(0, prev.standaloneEggs - 1)
+                  extraFoods: { ...prev.extraFoods, soyaChunks30g: !prev.extraFoods.soyaChunks30g }
                 }))}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400"
+                className={`w-full py-1.5 rounded-xl text-[10px] font-bold transition active:scale-95 ${
+                  extraFoods.soyaChunks30g
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-950 text-slate-400 hover:text-white border border-white/[0.06]'
+                }`}
               >
-                <Minus className="w-3.5 h-3.5" />
+                {extraFoods.soyaChunks30g ? '✓ Logged' : 'Log 30g'}
               </button>
-              <span className="text-xs font-bold text-amber-400 w-4 text-center">{standaloneEggs}</span>
+            </div>
+
+            {/* 5. 3 Daily Boiled Eggs */}
+            <div className="p-3 rounded-2xl bg-slate-900/70 border border-white/[0.06] flex flex-col justify-between space-y-2 col-span-2 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">🥚 Boiled Eggs (Target: 3/day)</span>
+                  <span className="text-xs font-bold text-white">
+                    {standaloneEggs} standalone eggs ({standaloneEggs * 75} kcal • {(standaloneEggs * 6.5).toFixed(1)}g pro)
+                  </span>
+                </div>
+                {curryEggsCount > 0 && (
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                    +{curryEggsCount} in curry
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center justify-between bg-slate-950 rounded-xl px-2 py-1 border border-white/[0.06]">
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    standaloneEggs: Math.max(0, (prev.standaloneEggs || 0) - 1)
+                  }))}
+                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-white flex items-center justify-center active:scale-90"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="font-mono font-bold text-xs text-white">
+                  {standaloneEggs} Eggs ({totalEggsToday} Total)
+                </span>
+                <button
+                  onClick={() => setDailyLog(prev => ({
+                    ...prev,
+                    standaloneEggs: (prev.standaloneEggs || 0) + 1
+                  }))}
+                  className="w-6 h-6 rounded-lg text-slate-400 hover:text-white flex items-center justify-center active:scale-90"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Meals Timeline Cards */}
+      <div className="space-y-3">
+        {/* Breakfast Card */}
+        <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
+          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Breakfast</span>
+                <h4 className="text-sm font-bold text-white">{breakfast.name}</h4>
+              </div>
+              <button
+                onClick={() => setIsBreakfastPickerOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-bold text-emerald-400 border border-white/[0.06] transition active:scale-95"
+              >
+                Change
+              </button>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-white font-bold">{breakfast.calories} kcal</span>
+              <span className="text-slate-500">•</span>
+              <span className="text-emerald-400 font-bold">{breakfast.protein}g protein</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Lunch Card */}
+        <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
+          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Lunch (Hostel Mess)</span>
+                <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
+                  <span className="text-white font-bold">{lunchCalories} kcal</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-400 font-bold">{lunchProtein}g protein</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Steppers for Rice, Curry, Dal */}
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              {/* Rice */}
+              <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
+                <span className="text-[10px] text-slate-400 block font-medium">Rice (bowls)</span>
+                <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, riceKatoris: Math.max(0, (prev.lunch?.riceKatoris || 0) - 0.5) }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Minus className="w-3 h-3 mx-auto" />
+                  </button>
+                  <span className="font-mono font-bold text-white text-xs">{lunch.riceKatoris}</span>
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, riceKatoris: (prev.lunch?.riceKatoris || 0) + 0.5 }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-3 h-3 mx-auto" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Curry */}
+              <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
+                <span className="text-[10px] text-slate-400 block font-medium">Curry (bowls)</span>
+                <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, curryKatoris: Math.max(0, (prev.lunch?.curryKatoris || 0) - 0.5) }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Minus className="w-3 h-3 mx-auto" />
+                  </button>
+                  <span className="font-mono font-bold text-white text-xs">{lunch.curryKatoris}</span>
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, curryKatoris: (prev.lunch?.curryKatoris || 0) + 0.5 }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-3 h-3 mx-auto" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Dal */}
+              <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
+                <span className="text-[10px] text-slate-400 block font-medium">Dal (bowls)</span>
+                <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, dalKatoris: Math.max(0, (prev.lunch?.dalKatoris || 0) - 0.5) }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Minus className="w-3 h-3 mx-auto" />
+                  </button>
+                  <span className="font-mono font-bold text-white text-xs">{lunch.dalKatoris}</span>
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      lunch: { ...prev.lunch, dalKatoris: (prev.lunch?.dalKatoris || 0) + 0.5 }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-3 h-3 mx-auto" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dinner Card */}
+        <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
+          <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Dinner (Hostel Mess)</span>
+                <div className="flex items-center gap-2 text-xs font-mono mt-0.5">
+                  <span className="text-white font-bold">{dinnerCalories} kcal</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-400 font-bold">{dinnerProtein}g protein</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Steppers for Rice & Chapatis */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
+                <span className="text-[10px] text-slate-400 block font-medium">Rice (bowls)</span>
+                <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      dinner: { ...prev.dinner, riceKatoris: Math.max(0, (prev.dinner?.riceKatoris || 0) - 0.5) }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Minus className="w-3 h-3 mx-auto" />
+                  </button>
+                  <span className="font-mono font-bold text-white text-xs">{dinner.riceKatoris}</span>
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      dinner: { ...prev.dinner, riceKatoris: (prev.dinner?.riceKatoris || 0) + 0.5 }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-3 h-3 mx-auto" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
+                <span className="text-[10px] text-slate-400 block font-medium">Chapatis (pieces)</span>
+                <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      dinner: { ...prev.dinner, chapatis: Math.max(0, (prev.dinner?.chapatis || 0) - 1) }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Minus className="w-3 h-3 mx-auto" />
+                  </button>
+                  <span className="font-mono font-bold text-white text-xs">{dinner.chapatis}</span>
+                  <button
+                    onClick={() => setDailyLog(prev => ({
+                      ...prev,
+                      dinner: { ...prev.dinner, chapatis: (prev.dinner?.chapatis || 0) + 1 }
+                    }))}
+                    className="w-5 h-5 text-slate-400 hover:text-white"
+                  >
+                    <Plus className="w-3 h-3 mx-auto" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Curry Type Toggles */}
+            <div className="flex items-center gap-1.5 pt-1">
               <button
                 onClick={() => setDailyLog(prev => ({
                   ...prev,
-                  standaloneEggs: Math.min(5, prev.standaloneEggs + 1)
+                  dinner: {
+                    ...prev.dinner,
+                    hasChickenCurry: !prev.dinner.hasChickenCurry,
+                    hasEggCurry: false,
+                    hasVegCurry: prev.dinner.hasChickenCurry ? true : false
+                  }
                 }))}
-                className="p-1 hover:bg-slate-800 rounded text-slate-400"
+                className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+                  dinner.hasChickenCurry
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border border-white/[0.06]'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
+                🍗 Chicken
+              </button>
+
+              <button
+                onClick={() => setDailyLog(prev => ({
+                  ...prev,
+                  dinner: {
+                    ...prev.dinner,
+                    hasEggCurry: !prev.dinner.hasEggCurry,
+                    hasChickenCurry: false,
+                    hasVegCurry: prev.dinner.hasEggCurry ? true : false
+                  }
+                }))}
+                className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+                  dinner.hasEggCurry
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border border-white/[0.06]'
+                }`}
+              >
+                🥚 Egg Curry
+              </button>
+
+              <button
+                onClick={() => setDailyLog(prev => ({
+                  ...prev,
+                  dinner: {
+                    ...prev.dinner,
+                    hasVegCurry: true,
+                    hasChickenCurry: false,
+                    hasEggCurry: false
+                  }
+                }))}
+                className={`flex-1 py-2 rounded-xl text-[11px] font-bold transition active:scale-95 ${
+                  dinner.hasVegCurry && !dinner.hasChickenCurry && !dinner.hasEggCurry
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border border-white/[0.06]'
+                }`}
+              >
+                🥗 Veg
               </button>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* 4. Hostel Meals & Custom Dishes */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h3 className="font-bold text-white text-base">Hostel Meals & Curries</h3>
-            <p className="text-xs text-slate-400">Portions in standard <strong>bowls (katoris ≈ 200ml)</strong></p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowHandGuide(!showHandGuide)}
-              className="text-[11px] font-medium text-slate-400 hover:text-white flex items-center gap-1 bg-slate-950 px-2.5 py-1 rounded-full border border-slate-800"
-            >
-              <Info className="w-3 h-3 text-emerald-400" />
-              <span>Hand Guide</span>
-            </button>
-            <button
-              onClick={() => setIsCustomFoodModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold transition active:scale-95"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>Estimate Any Dish</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Hostel Hand & Utensil Visual Guide */}
-        {showHandGuide && (
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 space-y-1.5 animate-fadeIn">
-            <p className="font-semibold text-emerald-400">✋ Visual No-Scale Estimation Rule of Thumb:</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
-                <span className="font-bold text-white block">1 Closed Fist ✊</span>
-                <span className="text-slate-400">≈ 1 bowl rice (~180 kcal)</span>
-              </div>
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
-                <span className="font-bold text-white block">1 Palm ✋</span>
-                <span className="text-slate-400">≈ 1 chicken/fish piece (~25g protein)</span>
-              </div>
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
-                <span className="font-bold text-white block">1 Cupped Hand 🫲</span>
-                <span className="text-slate-400">≈ 1 handful peanuts (30g, ~170 kcal)</span>
-              </div>
-              <div className="bg-slate-900 p-2 rounded-lg border border-slate-850">
-                <span className="font-bold text-white block">1 Steel Katori 🥣</span>
-                <span className="text-slate-400">≈ 200ml (2.5 bowls = 500ml bottle)</span>
+        {/* Custom Items / Unknown Curries Logged */}
+        {customItems.length > 0 && (
+          <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-sm">
+            <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-2">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                Discovered Foods & Custom Curries
+              </span>
+              <div className="space-y-1.5">
+                {customItems.map((item) => (
+                  <div key={item.id} className="p-2.5 rounded-xl bg-slate-900/80 border border-white/[0.06] flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-white">{item.name}</p>
+                      <p className="text-[10px] text-slate-400">{item.portion}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right font-mono">
+                        <span className="font-bold text-white block">{item.calories} kcal</span>
+                        <span className="text-[10px] text-emerald-400">{item.protein}g pro</span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveCustomItem(item.id)}
+                        className="w-6 h-6 rounded-lg text-slate-500 hover:text-rose-400 flex items-center justify-center transition"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         )}
+      </div>
 
-        {/* Breakfast Picker */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-medium">Breakfast</span>
-            <span className="text-slate-300 font-semibold">{breakfast.calories} kcal • {breakfast.protein}g</span>
-          </div>
-
-          <div className="relative">
-            <button
-              onClick={() => setIsBreakfastPickerOpen(!isBreakfastPickerOpen)}
-              className="w-full bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between text-xs text-white hover:border-slate-700 transition"
-            >
-              <span>{breakfast.name}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
-
-            {isBreakfastPickerOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1 bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-xl z-20">
-                {HOSTEL_BREAKFAST_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => {
-                      setDailyLog(prev => ({
-                        ...prev,
-                        breakfast: {
-                          name: opt.name,
-                          calories: opt.calories,
-                          protein: opt.protein,
-                          isEggCurry: !!opt.hasCurryEgg
-                        }
-                      }));
-                      setIsBreakfastPickerOpen(false);
-                    }}
-                    className="w-full text-left p-2.5 hover:bg-slate-900 text-xs text-slate-200 border-b border-slate-850 flex justify-between items-center transition"
-                  >
-                    <span>{opt.name}</span>
-                    <span className="text-slate-500">{opt.calories} kcal</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Lunch Steppers (Clear Bowls / Katoris metric!) */}
-        <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-medium">Lunch</span>
-            <span className="text-slate-300 font-semibold">{lunchCalories} kcal • {lunchProtein}g</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            {/* Rice */}
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+      {/* 5. Breakfast Selection Modal Drawer */}
+      {isBreakfastPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/[0.1] rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between">
               <div>
-                <span className="text-slate-300 font-semibold block">Rice</span>
-                <span className="text-[10px] text-slate-500">~200ml bowl</span>
+                <h3 className="font-extrabold text-white text-base">Select Breakfast</h3>
+                <p className="text-xs text-slate-400">Common Mangaluru mess breakfast options</p>
               </div>
-              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, riceKatoris: Math.max(0, prev.lunch.riceKatoris - 0.5) }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="font-bold text-white text-xs">{lunch.riceKatoris} bowls</span>
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, riceKatoris: prev.lunch.riceKatoris + 0.5 }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
+              <button
+                onClick={() => setIsBreakfastPickerOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {/* Veg Curry */}
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
-              <div>
-                <span className="text-slate-300 font-semibold block">Veg Curry</span>
-                <span className="text-[10px] text-slate-500">Mess curry</span>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+              {HOSTEL_BREAKFAST_OPTIONS.map((opt) => (
                 <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, curryKatoris: Math.max(0, prev.lunch.curryKatoris - 0.5) }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="font-bold text-white text-xs">{lunch.curryKatoris} bowls</span>
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, curryKatoris: prev.lunch.curryKatoris + 0.5 }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-
-            {/* Dal */}
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
-              <div>
-                <span className="text-slate-300 font-semibold block">Dal / Sambar</span>
-                <span className="text-[10px] text-slate-500">Yellow dal</span>
-              </div>
-              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, dalKatoris: Math.max(0, prev.lunch.dalKatoris - 0.5) }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="font-bold text-white text-xs">{lunch.dalKatoris} bowls</span>
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    lunch: { ...prev.lunch, dalKatoris: prev.lunch.dalKatoris + 0.5 }
-                  }))}
-                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dinner Steppers */}
-        <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-slate-400 font-medium">Dinner</span>
-            <span className="text-slate-300 font-semibold">{dinnerCalories} kcal • {dinnerProtein}g</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-300">Chapatis</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    dinner: { ...prev.dinner, chapatis: Math.max(0, prev.dinner.chapatis - 1) }
-                  }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="font-bold text-white w-6 text-center">{dinner.chapatis} pcs</span>
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    dinner: { ...prev.dinner, chapatis: prev.dinner.chapatis + 1 }
-                  }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-300">Rice</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    dinner: { ...prev.dinner, riceKatoris: Math.max(0, prev.dinner.riceKatoris - 0.5) }
-                  }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="font-bold text-white w-6 text-center">{dinner.riceKatoris} bowls</span>
-                <button
-                  onClick={() => setDailyLog(prev => ({
-                    ...prev,
-                    dinner: { ...prev.dinner, riceKatoris: prev.dinner.riceKatoris + 0.5 }
-                  }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setDailyLog(prev => ({
-                ...prev,
-                dinner: {
-                  ...prev.dinner,
-                  hasChickenCurry: !prev.dinner.hasChickenCurry,
-                  hasEggCurry: false
-                }
-              }))}
-              className={`p-2 rounded-xl border text-center transition font-semibold ${
-                dinner.hasChickenCurry ? 'bg-emerald-500/15 border-emerald-500/50 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'
-              }`}
-            >
-              Chicken (+18g)
-            </button>
-
-            <button
-              onClick={() => setDailyLog(prev => ({
-                ...prev,
-                dinner: {
-                  ...prev.dinner,
-                  hasEggCurry: !prev.dinner.hasEggCurry,
-                  hasChickenCurry: false
-                }
-              }))}
-              className={`p-2 rounded-xl border text-center transition font-semibold ${
-                dinner.hasEggCurry ? 'bg-sky-500/15 border-sky-500/50 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'
-              }`}
-            >
-              Egg Curry (1 egg)
-            </button>
-          </div>
-        </div>
-
-        {/* 5. Custom Logged Items List */}
-        {customItems.length > 0 && (
-          <div className="pt-2 border-t border-slate-800/80 space-y-2">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">
-              Extra Added Dishes ({customItems.length}):
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {customItems.map((item) => (
-                <div 
-                  key={item.id} 
-                  className="bg-slate-950 px-3 py-1.5 rounded-xl border border-emerald-500/30 text-xs flex items-center gap-2"
+                  key={opt.id}
+                  onClick={() => {
+                    setDailyLog(prev => ({
+                      ...prev,
+                      breakfast: {
+                        name: opt.name,
+                        calories: opt.calories,
+                        protein: opt.protein,
+                        isEggCurry: opt.isEggCurry
+                      }
+                    }));
+                    setIsBreakfastPickerOpen(false);
+                  }}
+                  className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition active:scale-95 ${
+                    breakfast.name === opt.name
+                      ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-sm'
+                      : 'bg-slate-950 border-white/[0.06] text-slate-300 hover:border-white/[0.15]'
+                  }`}
                 >
                   <div>
-                    <span className="font-semibold text-white">{item.name}</span>
-                    <span className="text-slate-500 text-[10px] ml-1">({item.portion})</span>
-                    <span className="text-emerald-400 text-[11px] font-mono ml-2">+{item.calories} kcal • +{item.protein}g</span>
+                    <p className="font-bold text-xs text-white">{opt.name}</p>
+                    <p className="text-[10px] text-slate-400">{opt.portion}</p>
                   </div>
-                  <button 
-                    onClick={() => handleRemoveCustomItem(item.id)}
-                    className="p-0.5 text-slate-500 hover:text-red-400 rounded transition"
-                    title="Remove item"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                  <div className="text-right font-mono">
+                    <span className="font-bold text-xs text-emerald-400 block">{opt.calories} kcal</span>
+                    <span className="text-[10px] text-slate-400">{opt.protein}g pro</span>
+                  </div>
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </section>
+        </div>
+      )}
 
-      {/* Visual Portion & Macro Estimator Modal */}
+      {/* 6. Visual 3-Tap Macro Estimator Modal (For Unknown Dishes) */}
       {isCustomFoodModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/[0.1] rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-3.5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-white text-base flex items-center gap-1.5">
-                  <Wand2 className="w-4 h-4 text-emerald-400" />
-                  Smart Portion & Macro Estimator
-                </h3>
-                <p className="text-xs text-slate-400">Estimate any curry or dish in 3 visual taps</p>
+                <h3 className="font-extrabold text-white text-base">Visual Macro Estimator</h3>
+                <p className="text-xs text-slate-400">Estimate any unknown curry or dish in 3 taps</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsCustomFoodModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -811,20 +844,32 @@ export default function TrackerTab({
 
             {/* Step 1: Dish Name */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1 font-medium">1. What dish are you eating?</label>
+              <label className="text-xs text-slate-300 block mb-1 font-semibold">1. Dish Name</label>
               <input
                 type="text"
-                placeholder="e.g. Fish Curry, Paneer Bhurji, Sambar, Maggi, Biryani..."
+                placeholder="e.g. Mixed Veg Curry, Rajma, Sambar..."
                 value={customDishName}
                 onChange={(e) => setCustomDishName(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
-                autoFocus
+                className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
+              {/* Quick suggestions */}
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {['Hostel Veg Curry', 'Dal Tadka', 'Chicken Gravy', 'Egg Roast', 'Kerala Parotta'].map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => setCustomDishName(sug)}
+                    className="text-[9px] px-2 py-0.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/[0.05]"
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Step 2: What is the main food base? */}
+            {/* Step 2: Base Category */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1.5 font-medium">2. What is the primary ingredient base?</label>
+              <label className="text-xs text-slate-300 block mb-1 font-semibold">2. Base Texture</label>
               <div className="grid grid-cols-2 gap-1.5">
                 {FOOD_BASE_CATEGORIES.map((base) => {
                   const isSelected = selectedBaseId === base.id;
@@ -833,17 +878,14 @@ export default function TrackerTab({
                       key={base.id}
                       type="button"
                       onClick={() => handleBaseChange(base.id)}
-                      className={`p-2.5 rounded-xl border text-left text-xs transition flex items-center gap-2 ${
+                      className={`p-2.5 rounded-2xl border text-left text-xs transition active:scale-95 ${
                         isSelected 
-                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-semibold' 
-                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/40' 
+                          : 'bg-slate-950 border-white/[0.06] text-slate-300 hover:border-white/[0.15]'
                       }`}
                     >
-                      <span className="text-base">{base.icon}</span>
-                      <div className="truncate">
-                        <p className="truncate text-xs font-semibold">{base.name.split('(')[0]}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{base.example}</p>
-                      </div>
+                      <p className="font-bold text-xs truncate">{base.name.split('/')[0]}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{base.example}</p>
                     </button>
                   );
                 })}
@@ -852,7 +894,7 @@ export default function TrackerTab({
 
             {/* Step 3: Portion Size */}
             <div>
-              <label className="text-xs text-slate-400 block mb-1.5 font-medium">3. How big is your portion?</label>
+              <label className="text-xs text-slate-300 block mb-1 font-semibold">3. Portion Size</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {PORTION_SIZES.map((p) => {
                   const isSelected = selectedPortionId === p.id;
@@ -861,46 +903,46 @@ export default function TrackerTab({
                       key={p.id}
                       type="button"
                       onClick={() => handlePortionChange(p.id)}
-                      className={`p-2 rounded-xl border text-center text-xs transition ${
+                      className={`p-2 rounded-2xl border text-center text-xs transition active:scale-95 ${
                         isSelected 
-                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-semibold' 
-                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                          ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold' 
+                          : 'bg-slate-950 border-white/[0.06] text-slate-300'
                       }`}
                     >
-                      <span className="block font-semibold text-xs">{p.label.split('(')[0]}</span>
-                      <span className="text-[10px] text-slate-500">{p.desc.split('(')[1]?.replace(')', '') || p.desc}</span>
+                      <span className="block font-bold text-[11px]">{p.label.split('(')[0]}</span>
+                      <span className="text-[9px] text-slate-400">{p.volumeMl ? `${p.volumeMl}ml` : 'pcs'}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Oiliness check */}
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+            {/* Extra Oily toggle */}
+            <div className="bg-slate-950 p-2.5 rounded-2xl border border-white/[0.06] flex items-center justify-between text-xs">
               <div>
-                <span className="text-xs font-semibold text-white">Is it extra oily / hotel style?</span>
-                <span className="text-[10px] text-slate-500 block">Adds ~60 kcal from extra oil/ghee</span>
+                <span className="font-bold text-white block">Extra Oily / Restaurant Gravy?</span>
+                <span className="text-[10px] text-slate-400">+60 kcal cooking oil</span>
               </div>
               <button
                 type="button"
                 onClick={() => handleOilToggle(!isExtraOily)}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition ${
-                  isExtraOily ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-850 text-slate-400 hover:text-white'
+                className={`px-3 py-1 rounded-full text-xs font-bold transition ${
+                  isExtraOily ? 'bg-amber-500 text-slate-950' : 'bg-slate-850 text-slate-400 border border-white/[0.08]'
                 }`}
               >
-                {isExtraOily ? 'Extra Oily (+60 kcal)' : 'Normal'}
+                {isExtraOily ? 'Extra Oil' : 'Normal'}
               </button>
             </div>
 
-            {/* Estimated result display */}
-            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 flex items-center justify-between">
+            {/* Output Calculation Banner */}
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between">
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Nutrition:</span>
-                <span className="text-sm font-bold text-white">{customDishPortion}</span>
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Estimated Macros:</span>
+                <span className="text-xs font-bold text-white">{customDishPortion}</span>
               </div>
-              <div className="text-right">
-                <span className="text-base font-bold text-emerald-400">{customDishCalories} kcal</span>
-                <span className="text-xs text-slate-400 block">• {customDishProtein}g protein</span>
+              <div className="text-right font-mono">
+                <span className="text-base font-black text-emerald-400 block">{customDishCalories} kcal</span>
+                <span className="text-xs text-slate-300">{customDishProtein}g protein</span>
               </div>
             </div>
 
@@ -908,7 +950,7 @@ export default function TrackerTab({
               <button
                 type="button"
                 onClick={() => setIsCustomFoodModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
+                className="flex-1 py-3 rounded-2xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
               >
                 Cancel
               </button>
@@ -916,9 +958,9 @@ export default function TrackerTab({
                 type="button"
                 onClick={handleAddCustomFood}
                 disabled={!customDishName.trim()}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm disabled:opacity-50"
+                className="flex-1 py-3 rounded-2xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-md shadow-emerald-950 disabled:opacity-50"
               >
-                Add to Daily Intake
+                Add to Day's Intake
               </button>
             </div>
           </div>

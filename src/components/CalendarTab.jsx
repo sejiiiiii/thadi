@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  Scale, Plus, Flame, Dumbbell, Check, TrendingUp 
+  Scale, Plus, Flame, Dumbbell, Check, TrendingUp, X 
 } from 'lucide-react';
 
 export default function CalendarTab({ 
@@ -26,13 +26,10 @@ export default function CalendarTab({
   const prevMonth = () => setCurrentMonthDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentMonthDate(new Date(year, month + 1, 1));
 
-  // Calendar math
+  // Calendar calculations
   const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
   const monthName = currentMonthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  // Today string
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Helper to calculate totals for any day
@@ -90,7 +87,6 @@ export default function CalendarTab({
     return { totalCal, totalPro, metSurplus: totalCal >= targetCalories };
   };
 
-  // Add weight entry
   const handleSaveWeight = (e) => {
     e.preventDefault();
     const val = parseFloat(weightInput);
@@ -106,226 +102,237 @@ export default function CalendarTab({
     setWeightInput('');
   };
 
-  // Find selected date data
-  const selectedDayData = getDayTotals(selectedDateKey);
-  const selectedWeight = weightHistory.find(w => w.date === selectedDateKey);
-
   const startingWeight = weightHistory.length > 0 ? weightHistory[weightHistory.length - 1].weight : 55.0;
   const latestWeight = weightHistory.length > 0 ? weightHistory[0].weight : 55.0;
   const netWeightGain = (latestWeight - startingWeight).toFixed(1);
+  const selectedDayData = getDayTotals(selectedDateKey);
+  const selectedWeight = weightHistory.find(w => w.date === selectedDateKey);
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6 animate-fadeIn">
-      {/* 1. Header: Minimalist Google Style */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Bulk Journey & Calendar</h2>
-          <p className="text-xs text-slate-400">Review past daily intake and log your weekly weight</p>
-        </div>
-
-        <button
-          onClick={() => setIsWeightModalOpen(true)}
-          className="flex items-center gap-1.5 self-start sm:self-auto px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-semibold transition active:scale-95 shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Log Weight</span>
-        </button>
-      </div>
-
-      {/* 2. Weight Progress Pill (Clean Google Health Style) */}
-      <div className="grid grid-cols-3 gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        <div>
-          <span className="text-[11px] text-slate-400 block font-medium">Starting</span>
-          <p className="text-base font-bold text-white mt-0.5">{startingWeight} kg</p>
-          <span className="text-[10px] text-slate-500">Day 1 baseline</span>
-        </div>
-        <div className="border-x border-slate-800/80 px-3">
-          <span className="text-[11px] text-slate-400 block font-medium">Current</span>
-          <p className="text-base font-bold text-emerald-400 mt-0.5">{latestWeight} kg</p>
-          <span className="text-[10px] text-slate-500">Latest recorded</span>
-        </div>
-        <div>
-          <span className="text-[11px] text-slate-400 block font-medium">Net Change</span>
-          <p className={`text-base font-bold mt-0.5 ${Number(netWeightGain) >= 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
-            {Number(netWeightGain) > 0 ? `+${netWeightGain}` : netWeightGain} kg
-          </p>
-          <span className="text-[10px] text-slate-500">Target ~0.25 kg/wk</span>
-        </div>
-      </div>
-
-      {/* 3. Monthly Calendar Grid */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
-        {/* Month Selector */}
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-white text-base">{monthName}</h3>
-          <div className="flex items-center gap-1">
+    <div className="space-y-4 pb-28 animate-fadeIn max-w-md md:max-w-xl mx-auto">
+      {/* 1. Weight Hero Card (Double-Bezel) */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-xl">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                Bulk Progress
+              </span>
+              <h2 className="text-xl font-black text-white tracking-tight mt-1">Weight & Consistency</h2>
+            </div>
             <button
-              onClick={prevMonth}
-              className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
+              onClick={() => setIsWeightModalOpen(true)}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold transition-all duration-200 active:scale-95 shadow-md shadow-emerald-950 flex items-center gap-1.5"
             >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={nextMonth}
-              className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition"
-            >
-              <ChevronRight className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
+              <span>Log Weight</span>
             </button>
           </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
+              <span className="text-[10px] text-slate-400 font-medium block">Starting</span>
+              <p className="text-base font-black text-white font-mono mt-0.5">{startingWeight} kg</p>
+              <span className="text-[9px] text-slate-500 block">Baseline</span>
+            </div>
+
+            <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
+              <span className="text-[10px] text-slate-400 font-medium block">Current</span>
+              <p className="text-base font-black text-emerald-400 font-mono mt-0.5">{latestWeight} kg</p>
+              <span className="text-[9px] text-emerald-500/80 block">Latest</span>
+            </div>
+
+            <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
+              <span className="text-[10px] text-slate-400 font-medium block">Net Change</span>
+              <p className={`text-base font-black font-mono mt-0.5 ${Number(netWeightGain) >= 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+                {Number(netWeightGain) > 0 ? `+${netWeightGain}` : netWeightGain} kg
+              </p>
+              <span className="text-[9px] text-slate-500 block">Target +0.25k/wk</span>
+            </div>
+          </div>
         </div>
+      </div>
 
-        {/* Days of week */}
-        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-slate-500 mb-2">
-          <span>Su</span>
-          <span>Mo</span>
-          <span>Tu</span>
-          <span>We</span>
-          <span>Th</span>
-          <span>Fr</span>
-          <span>Sa</span>
-        </div>
-
-        {/* Calendar Day Cells */}
-        <div className="grid grid-cols-7 gap-1.5">
-          {/* Empty prefix cells */}
-          {Array.from({ length: firstDayIndex }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-14 sm:h-16 rounded-xl bg-transparent" />
-          ))}
-
-          {/* Actual days */}
-          {Array.from({ length: daysInMonth }).map((_, i) => {
-            const dayNum = i + 1;
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-            const isSelected = dateStr === selectedDateKey;
-            const isToday = dateStr === todayStr;
-            const totals = getDayTotals(dateStr);
-            const dayWeight = weightHistory.find(w => w.date === dateStr);
-
-            return (
+      {/* 2. Interactive Monthly Calendar */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-md">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+          {/* Month Switcher */}
+          <div className="flex items-center justify-between pb-1">
+            <h3 className="font-extrabold text-sm text-white tracking-tight">{monthName}</h3>
+            <div className="flex items-center gap-1">
               <button
-                key={dateStr}
-                onClick={() => setSelectedDateKey(dateStr)}
-                className={`h-14 sm:h-16 p-1.5 rounded-xl text-left border flex flex-col justify-between transition-all relative ${
-                  isSelected
-                    ? 'bg-emerald-500/15 border-emerald-500 text-white shadow-sm'
-                    : 'bg-slate-950 border-slate-800/80 hover:border-slate-700 text-slate-300'
-                }`}
+                onClick={prevMonth}
+                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center justify-center transition active:scale-90"
               >
-                <div className="flex items-center justify-between w-full">
-                  <span className={`text-xs font-semibold ${isToday ? 'w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-bold' : ''}`}>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={nextMonth}
+                className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-slate-300 flex items-center justify-center transition active:scale-90"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Day of Week Headers */}
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500">
+            <span>S</span>
+            <span>M</span>
+            <span>T</span>
+            <span>W</span>
+            <span>T</span>
+            <span>F</span>
+            <span>S</span>
+          </div>
+
+          {/* Calendar Days Matrix */}
+          <div className="grid grid-cols-7 gap-1.5">
+            {/* Empty Offset */}
+            {Array.from({ length: firstDayIndex }).map((_, i) => (
+              <div key={`empty-${i}`} className="h-12 rounded-xl bg-transparent" />
+            ))}
+
+            {/* Month Days */}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+              const isSelected = dateStr === selectedDateKey;
+              const isToday = dateStr === todayStr;
+              const totals = getDayTotals(dateStr);
+              const dayWeight = weightHistory.find(w => w.date === dateStr);
+
+              return (
+                <button
+                  key={dateStr}
+                  onClick={() => setSelectedDateKey(dateStr)}
+                  className={`h-12 p-1 rounded-2xl flex flex-col justify-between items-center transition-all duration-200 active:scale-90 relative border ${
+                    isSelected
+                      ? 'bg-emerald-500/20 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/50'
+                      : 'bg-slate-900/50 border-white/[0.05] hover:border-white/[0.15] text-slate-300'
+                  }`}
+                >
+                  <span className={`text-[11px] font-bold ${
+                    isToday ? 'w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center' : ''
+                  }`}>
                     {dayNum}
                   </span>
-                  {dayWeight && (
-                    <span className="text-[9px] text-amber-400 font-bold hidden sm:inline">
-                      {dayWeight.weight}k
-                    </span>
-                  )}
-                </div>
 
-                {totals ? (
-                  <div className="w-full">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className={`font-medium ${totals.metSurplus ? 'text-emerald-400' : 'text-slate-400'}`}>
-                        {totals.totalCal}
-                      </span>
-                      <span className="text-[9px] text-slate-500 hidden sm:inline">{totals.totalPro}g</span>
+                  {totals ? (
+                    <div className="flex items-center gap-0.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${totals.metSurplus ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                     </div>
-                    {/* Status dot */}
-                    <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${totals.metSurplus ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                  </div>
-                ) : (
-                  <div className="text-[10px] text-slate-700 font-mono">—</div>
-                )}
-              </button>
-            );
-          })}
+                  ) : dayWeight ? (
+                    <span className="text-[8px] font-mono text-amber-400 font-bold">{dayWeight.weight}k</span>
+                  ) : (
+                    <span className="text-[9px] text-slate-700">·</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 pt-2 border-t border-white/[0.06]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Surplus Hit (&ge;{targetCalories} kcal)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span>Intake Logged</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 4. Selected Day Inspector */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div>
-            <span className="text-[11px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              Day Breakdown
-            </span>
-            <h3 className="text-base font-bold text-white mt-1">
-              {new Date(selectedDateKey).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}
-            </h3>
+      {/* 3. Selected Day Inspector Card */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-md">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+            <div>
+              <span className="text-[10px] uppercase font-extrabold text-emerald-400 tracking-wider">
+                Inspection
+              </span>
+              <h4 className="text-sm font-extrabold text-white">
+                {new Date(selectedDateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </h4>
+            </div>
+
+            {selectedWeight && (
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block font-medium">Morning Weight</span>
+                <span className="text-sm font-black text-emerald-400 font-mono">{selectedWeight.weight} kg</span>
+              </div>
+            )}
           </div>
 
-          {selectedWeight && (
-            <div className="text-right">
-              <span className="text-xs text-slate-400 block font-medium">Recorded Weight</span>
-              <span className="text-base font-bold text-emerald-400">{selectedWeight.weight} kg</span>
+          {selectedDayData ? (
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
+                <div className="flex items-center gap-1 text-slate-400 text-[11px]">
+                  <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Calories</span>
+                </div>
+                <p className="text-base font-black text-white font-mono mt-1">{selectedDayData.totalCal} kcal</p>
+                <span className={`text-[10px] font-bold ${selectedDayData.metSurplus ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {selectedDayData.metSurplus ? 'Surplus Achieved 🔥' : `${targetCalories - selectedDayData.totalCal} kcal below goal`}
+                </span>
+              </div>
+
+              <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
+                <div className="flex items-center gap-1 text-slate-400 text-[11px]">
+                  <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Protein</span>
+                </div>
+                <p className="text-base font-black text-white font-mono mt-1">{selectedDayData.totalPro}g</p>
+                <span className="text-[10px] text-slate-400">Target: {targetProtein}g</span>
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center text-xs text-slate-500">
+              No meals logged on this date yet. Tap the <strong>Today</strong> tab to record intake.
             </div>
           )}
         </div>
-
-        {selectedDayData ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Flame className="w-3.5 h-3.5 text-amber-400" /> Calories
-              </span>
-              <p className="text-lg font-bold text-white mt-0.5">{selectedDayData.totalCal} kcal</p>
-              <span className={`text-[10px] font-medium ${selectedDayData.metSurplus ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {selectedDayData.metSurplus ? 'Surplus Achieved' : `${targetCalories - selectedDayData.totalCal} kcal below goal`}
-              </span>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Dumbbell className="w-3.5 h-3.5 text-emerald-400" /> Protein
-              </span>
-              <p className="text-lg font-bold text-white mt-0.5">{selectedDayData.totalPro}g</p>
-              <span className="text-[10px] text-slate-400">Target: {targetProtein}g</span>
-            </div>
-
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
-              <span className="text-xs text-slate-400 block">Logging Status</span>
-              <p className="text-xs font-semibold text-emerald-400 mt-1 flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> Logged & Synced
-              </p>
-              <span className="text-[10px] text-slate-500">Tap "Today's Log" tab to edit this day</span>
-            </div>
-          </div>
-        ) : (
-          <div className="py-6 text-center text-xs text-slate-500">
-            No meals logged for this day yet. Switch to the <strong>Today's Log</strong> tab to record intake.
-          </div>
-        )}
       </div>
 
-      {/* 5. Weight Entry Modal */}
+      {/* 4. Weight Entry Modal */}
       {isWeightModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
-            <div>
-              <h3 className="font-bold text-white text-base">Record Body Weight</h3>
-              <p className="text-xs text-slate-400">Log on any morning or flexible weekly schedule</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-white/[0.1] rounded-3xl w-full max-w-sm p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-white text-base">Record Body Weight</h3>
+                <p className="text-xs text-slate-400">Log your morning weight on an empty stomach</p>
+              </div>
+              <button
+                onClick={() => setIsWeightModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
             <form onSubmit={handleSaveWeight} className="space-y-3">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Date</label>
+                <label className="text-xs text-slate-300 block mb-1 font-semibold">Date</label>
                 <input
                   type="date"
                   value={weightDateInput}
                   onChange={(e) => setWeightDateInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Weight (kg)</label>
+                <label className="text-xs text-slate-300 block mb-1 font-semibold">Weight (kg)</label>
                 <input
                   type="number"
                   step="0.1"
                   placeholder="e.g. 55.4"
                   value={weightInput}
                   onChange={(e) => setWeightInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 font-bold"
+                  className="w-full bg-slate-950 border border-white/[0.08] rounded-2xl px-3.5 py-2.5 text-base text-white focus:outline-none focus:border-emerald-500 font-mono font-bold"
                   autoFocus
                 />
               </div>
@@ -334,13 +341,13 @@ export default function CalendarTab({
                 <button
                   type="button"
                   onClick={() => setIsWeightModalOpen(false)}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
+                  className="flex-1 py-3 rounded-2xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm"
+                  className="flex-1 py-3 rounded-2xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-md shadow-emerald-950"
                 >
                   Save Entry
                 </button>

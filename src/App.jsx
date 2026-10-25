@@ -4,6 +4,7 @@ import TabNavigation from './components/TabNavigation';
 import TrackerTab from './components/TrackerTab';
 import CalendarTab from './components/CalendarTab';
 import PlannerTab from './components/PlannerTab';
+import StoresHubTab from './components/StoresHubTab';
 import ProfileTab from './components/ProfileTab';
 import WhatsAppExportModal from './components/WhatsAppExportModal';
 
@@ -280,6 +281,10 @@ export default function App() {
             budgetCap={budgetCap}
             setBudgetCap={setBudgetCap}
           />
+        )}
+
+        {activeTab === 'stores' && (
+          <StoresHubTab />
         )}
 
         {activeTab === 'profile' && (

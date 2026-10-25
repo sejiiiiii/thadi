@@ -44,7 +44,7 @@ export default function StoreMapTab() {
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 19
       }).addTo(map);
 
@@ -68,9 +68,9 @@ export default function StoreMapTab() {
 
     const customIcon = L.divIcon({
       className: 'custom-map-marker',
-      html: `<div style="background-color: #10b981; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 12px;">🏪</div>`,
-      iconSize: [26, 26],
-      iconAnchor: [13, 13]
+      html: `<div style="background-color: #10b981; width: 28px; height: 28px; border-radius: 50%; border: 3px solid #090b10; box-shadow: 0 4px 12px rgba(16,185,129,0.5); display: flex; align-items: center; justify-content: center; font-size: 13px;">🏪</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
     });
 
     stores.forEach((store) => {
@@ -79,10 +79,10 @@ export default function StoreMapTab() {
       const popupContent = `
         <div style="font-family: inherit; font-size: 12px; line-height: 1.4; min-width: 170px;">
           <b style="color: #10b981; font-size: 13px;">${store.name}</b><br/>
-          <span style="color: #94a3b8;">${store.area}</span><br/>
-          <div style="margin-top: 5px; padding: 4px; background: rgba(255,255,255,0.06); border-radius: 4px;">
-            <b style="color: #38bdf8;">Specialty:</b> ${store.specialty}<br/>
-            <b style="color: #34d399;">Price:</b> ${store.pricingTier}
+          <span style="color: #64748b;">${store.area}</span><br/>
+          <div style="margin-top: 5px; padding: 4px; background: rgba(0,0,0,0.06); border-radius: 4px;">
+            <b>Specialty:</b> ${store.specialty}<br/>
+            <b>Price:</b> ${store.pricingTier}
           </div>
           <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.area)}" target="_blank" style="display: inline-block; margin-top: 5px; color: #10b981; text-decoration: underline; font-weight: bold;">Open in Maps &rarr;</a>
         </div>
@@ -95,12 +95,12 @@ export default function StoreMapTab() {
     if (userLocation) {
       const userIcon = L.divIcon({
         className: 'user-location-marker',
-        html: `<div style="background-color: #0284c7; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px #0284c7; display: flex; align-items: center; justify-content: center; font-size: 10px;">📍</div>`,
+        html: `<div style="background-color: #0284c7; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 12px #0284c7; display: flex; align-items: center; justify-content: center; font-size: 11px;">📍</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
       });
       const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon });
-      userMarker.bindPopup('<b>You are here</b>');
+      userMarker.bindPopup('<b>Your Current Location</b>');
       markersGroupRef.current.addLayer(userMarker);
     }
   }, [stores, userLocation]);
@@ -163,124 +163,106 @@ export default function StoreMapTab() {
   };
 
   return (
-    <div className="space-y-5 pb-20 md:pb-6">
-      {/* 1. Map Header */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              Location-Based Grocery Filter
-            </span>
-            <h2 className="text-xl font-bold text-white mt-1">Local Stores & Wholesale Spots</h2>
-            <p className="text-xs text-slate-400">Verified spots for Nandini milk, bulk soya chunks, raw peanuts & bananas</p>
+    <div className="space-y-4">
+      {/* 1. Header Card (Double Bezel) */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-md">
+        <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                Mangaluru Central Map
+              </span>
+              <h3 className="font-extrabold text-sm text-white mt-1">Local Wholesale & Grocery Spots</h3>
+            </div>
+            <button
+              onClick={handleLocateMe}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/[0.08] text-xs font-bold transition flex items-center gap-1.5 active:scale-95"
+            >
+              <Compass className="w-3.5 h-3.5 text-emerald-400" />
+              <span>GPS</span>
+            </button>
           </div>
 
-          <button
-            onClick={handleLocateMe}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition"
-          >
-            <Compass className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Use My GPS</span>
-          </button>
-        </div>
+          <p className="text-[11px] text-slate-400">
+            Verified spots for Nandini milk, bulk soya chunks, raw peanuts & bananas in Hampankatta, Falnir, Attavar.
+          </p>
 
-        {/* Relocation Switcher */}
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 md:pb-0">
-            <span className="text-slate-500 text-[11px] shrink-0 mr-1 flex items-center gap-1">
-              <MapIcon className="w-3 h-3" /> City:
-            </span>
+          {/* Relocation Switcher */}
+          <div className="flex items-center gap-1.5 overflow-x-auto text-xs pt-1 pb-0.5">
             {PRESET_CITIES.map((c) => (
               <button
                 key={c.name}
                 onClick={() => handleSelectCity(c)}
-                className={`px-2.5 py-1 rounded-md text-xs transition shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 active:scale-95 ${
                   currentCity.name === c.name
-                    ? 'bg-emerald-500 text-slate-950 font-bold'
-                    : 'bg-slate-950 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-900 text-slate-400 hover:text-white border border-white/[0.06]'
                 }`}
               >
-                {c.name}
+                {c.name.split(' ')[0]}
               </button>
             ))}
           </div>
-
-          <form onSubmit={handleCitySearch} className="flex items-center gap-1.5">
-            <input
-              type="text"
-              placeholder="Search other city in India..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:w-52 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-            />
-            <button
-              type="submit"
-              disabled={isSearching}
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition"
-            >
-              {isSearching ? '...' : <Search className="w-3 h-3" />}
-            </button>
-          </form>
         </div>
-      </section>
+      </div>
 
-      {/* 2. Interactive Map */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-sm overflow-hidden">
+      {/* 2. Interactive Map Container */}
+      <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-md overflow-hidden">
         <div 
           ref={mapContainerRef} 
-          className="w-full h-72 sm:h-80 rounded-xl relative z-10"
+          className="w-full h-64 sm:h-72 rounded-[calc(1.5rem-2px)] relative z-10"
         />
-        <div className="px-3 py-2 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>Click any pin to inspect pricing and specialty</span>
-          <span className="text-emerald-400 font-medium">Mangalore Central: Hampankatta / Falnir / Attavar</span>
+        <div className="px-4 py-2 text-[10px] text-slate-400 flex items-center justify-between">
+          <span>Tap any pin to view specialty & prices</span>
+          <span className="text-emerald-400 font-bold">Central Mangaluru</span>
         </div>
-      </section>
+      </div>
 
       {/* 3. Stores List */}
-      <section className="space-y-3">
-        <h3 className="font-bold text-white text-base flex items-center gap-2">
+      <div className="space-y-2.5">
+        <h4 className="text-xs font-extrabold text-white flex items-center gap-1.5 px-1">
           <Store className="w-4 h-4 text-emerald-400" />
-          Recommended Physical Stores in Central Mangaluru
-        </h3>
+          <span>Verified Local Stores</span>
+        </h4>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-2">
           {stores.map((store) => (
             <div 
               key={store.id} 
-              className={`p-3.5 rounded-xl border transition-all ${
+              className={`p-3.5 rounded-2xl border transition-all ${
                 selectedStore?.id === store.id 
-                  ? 'bg-emerald-500/10 border-emerald-500/50' 
-                  : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                  ? 'bg-emerald-500/10 border-emerald-500/50 ring-1 ring-emerald-500/30' 
+                  : 'bg-slate-900/60 border-white/[0.06] hover:border-white/[0.12]'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h4 className="font-bold text-white text-sm">{store.name}</h4>
-                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
+                  <h5 className="font-bold text-white text-xs">{store.name}</h5>
+                  <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                     <MapPin className="w-3 h-3 text-emerald-400" />
                     {store.area}
                   </p>
                 </div>
-                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-slate-950 text-slate-400 border border-slate-800">
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-950 text-emerald-400 border border-white/[0.08]">
                   {store.pricingTier}
                 </span>
               </div>
 
-              <div className="mt-2.5 space-y-1 text-xs">
-                <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                  <span className="text-emerald-400 font-semibold">Specialty: </span>
+              <div className="mt-2 space-y-1 text-xs">
+                <div className="bg-slate-950 p-2 rounded-xl border border-white/[0.05] text-[11px]">
+                  <span className="text-emerald-400 font-bold">Specialty: </span>
                   <span className="text-slate-300">{store.specialty}</span>
                 </div>
-                <p className="text-slate-500 text-[11px] italic">{store.notes}</p>
+                <p className="text-slate-400 text-[10px] italic px-1">{store.notes}</p>
               </div>
 
-              <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                <span className="text-[11px] text-slate-500">{store.type}</span>
+              <div className="mt-2 pt-2 border-t border-white/[0.06] flex items-center justify-between">
+                <span className="text-[10px] text-slate-500">{store.type}</span>
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.name + ' ' + store.area)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold"
+                  className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-bold"
                 >
                   <span>Directions</span>
                   <ExternalLink className="w-3 h-3" />
@@ -289,7 +271,7 @@ export default function StoreMapTab() {
             </div>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
