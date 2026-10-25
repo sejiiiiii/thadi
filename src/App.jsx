@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import TabNavigation from './components/TabNavigation';
 import TrackerTab from './components/TrackerTab';
+import CalendarTab from './components/CalendarTab';
 import PlannerTab from './components/PlannerTab';
-import StoreMapTab from './components/StoreMapTab';
-import QuickCommerceTab from './components/QuickCommerceTab';
 import ProfileTab from './components/ProfileTab';
 import WhatsAppExportModal from './components/WhatsAppExportModal';
 
@@ -15,12 +14,16 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('tracker');
+  const [activeTab, setActiveTab] = useState('tracker'); // 'tracker' | 'calendar' | 'planner' | 'profile'
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
-  // Authentication state
+  // Authentication
   const [currentUser, setCurrentUser] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Date selection (Defaults to today)
+  const todayKey = new Date().toISOString().split('T')[0];
+  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
 
   // User Profile
   const [userProfile, setUserProfile] = useState(() => {
@@ -28,7 +31,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : DEFAULT_USER_PROFILE;
   });
 
-  // Weight History
+  // Weight History (Flexible / Weekly logging)
   const [weightHistory, setWeightHistory] = useState(() => {
     const saved = localStorage.getItem('thadi_weight_history');
     return saved ? JSON.parse(saved) : [
@@ -42,26 +45,54 @@ export default function App() {
     return saved ? Number(saved) : 2000;
   });
 
-  // Today's Date String
-  const todayKey = new Date().toISOString().split('T')[0];
+  // Master Daily Logs Store: { [dateKey]: logData }
+  const [allDailyLogs, setAllDailyLogs] = useState(() => {
+    const saved = localStorage.getItem('thadi_all_daily_logs');
+    if (saved) return JSON.parse(saved);
 
-  // Daily Food Log
-  const [dailyLog, setDailyLog] = useState(() => {
-    const saved = localStorage.getItem(`thadi_log_${todayKey}`);
-    return saved ? JSON.parse(saved) : {
-      breakfast: { name: 'Dosa (3 medium) with Sambar', calories: 430, protein: 12, isEggCurry: false },
-      lunch: { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 },
-      dinner: { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true },
-      extraFoods: {
-        milk500ml: true,
-        milk250ml: false,
-        bananasCount: 2,
-        peanuts30g: true,
-        soyaChunks30g: true
-      },
-      standaloneEggs: 3
+    // Default starting today log
+    return {
+      [todayKey]: {
+        breakfast: { name: 'Dosa (3 medium) with Sambar', calories: 430, protein: 12, isEggCurry: false },
+        lunch: { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 },
+        dinner: { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true },
+        extraFoods: {
+          milk500ml: true,
+          milk250ml: false,
+          bananasCount: 2,
+          peanuts30g: true,
+          soyaChunks30g: true
+        },
+        standaloneEggs: 3
+      }
     };
   });
+
+  // Active day's log
+  const currentDailyLog = allDailyLogs[selectedDateKey] || {
+    breakfast: { name: 'Poori Bhaji', calories: 450, protein: 9, isEggCurry: false },
+    lunch: { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 },
+    dinner: { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true },
+    extraFoods: {
+      milk500ml: false,
+      milk250ml: false,
+      bananasCount: 0,
+      peanuts30g: false,
+      soyaChunks30g: false
+    },
+    standaloneEggs: 3
+  };
+
+  const handleUpdateCurrentDayLog = (updater) => {
+    setAllDailyLogs(prev => {
+      const existing = prev[selectedDateKey] || currentDailyLog;
+      const updated = typeof updater === 'function' ? updater(existing) : updater;
+      return {
+        ...prev,
+        [selectedDateKey]: updated
+      };
+    });
+  };
 
   // 1. Firebase Auth Listener
   useEffect(() => {
@@ -72,7 +103,7 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // 2. Firestore Sync Listener (Loads user data from Cloud when logged in)
+  // 2. Cloud Firestore Real-time Sync
   useEffect(() => {
     if (!currentUser || !db) return;
 
@@ -95,18 +126,18 @@ export default function App() {
           setBudgetCap(data.budgetCap);
           localStorage.setItem('thadi_budget_cap', data.budgetCap.toString());
         }
-        if (data.dailyLogs && data.dailyLogs[todayKey]) {
-          setDailyLog(data.dailyLogs[todayKey]);
-          localStorage.setItem(`thadi_log_${todayKey}`, JSON.stringify(data.dailyLogs[todayKey]));
+        if (data.allDailyLogs) {
+          setAllDailyLogs(data.allDailyLogs);
+          localStorage.setItem('thadi_all_daily_logs', JSON.stringify(data.allDailyLogs));
         }
       }
     }, (err) => {
-      console.warn("Firestore sync warning:", err);
+      console.warn("Firestore sync notice:", err);
       setIsSyncing(false);
     });
 
     return unsubscribe;
-  }, [currentUser, todayKey]);
+  }, [currentUser]);
 
   // 3. Save to LocalStorage + Push to Firestore
   useEffect(() => {
@@ -118,6 +149,9 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('thadi_weight_history', JSON.stringify(weightHistory));
+    if (weightHistory.length > 0 && weightHistory[0].weight !== userProfile.weightKg) {
+      setUserProfile(prev => ({ ...prev, weightKg: weightHistory[0].weight }));
+    }
     if (currentUser && db) {
       setDoc(doc(db, 'users', currentUser.uid), { weightHistory }, { merge: true }).catch(console.error);
     }
@@ -131,69 +165,67 @@ export default function App() {
   }, [budgetCap, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(`thadi_log_${todayKey}`, JSON.stringify(dailyLog));
+    localStorage.setItem('thadi_all_daily_logs', JSON.stringify(allDailyLogs));
     if (currentUser && db) {
-      setDoc(doc(db, 'users', currentUser.uid), { 
-        dailyLogs: { [todayKey]: dailyLog } 
-      }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'users', currentUser.uid), { allDailyLogs }, { merge: true }).catch(console.error);
     }
-  }, [dailyLog, todayKey, currentUser]);
+  }, [allDailyLogs, currentUser]);
 
-  // Calculated Targets
+  // Target Calculations
   const tdeeData = calculateTDEEAndBulk(userProfile);
-  const targetCalories = tdeeData.bulkCalorieTarget;
-  const targetProtein = tdeeData.proteinTargetRange[1];
+  const targetCalories = tdeeData.bulkCalorieTarget; // ~2600 kcal
+  const targetProtein = tdeeData.proteinTargetRange[1]; // ~110g
 
-  // Reactive Calorie & Protein Sums
-  const breakfastCal = dailyLog.breakfast.calories || 0;
-  const breakfastPro = dailyLog.breakfast.protein || 0;
+  // Reactive Calorie & Protein Sums for selected day
+  const bCal = currentDailyLog.breakfast?.calories || 0;
+  const bPro = currentDailyLog.breakfast?.protein || 0;
 
-  const lunchCal = Math.round(
-    (dailyLog.lunch.riceKatoris * 180) + 
-    (dailyLog.lunch.curryKatoris * 140) + 
-    (dailyLog.lunch.dalKatoris * 150)
+  const lCal = Math.round(
+    ((currentDailyLog.lunch?.riceKatoris || 0) * 180) + 
+    ((currentDailyLog.lunch?.curryKatoris || 0) * 140) + 
+    ((currentDailyLog.lunch?.dalKatoris || 0) * 150)
   );
-  const lunchPro = parseFloat((
-    (dailyLog.lunch.riceKatoris * 3.8) + 
-    (dailyLog.lunch.curryKatoris * 3.5) + 
-    (dailyLog.lunch.dalKatoris * 7.0)
+  const lPro = parseFloat((
+    ((currentDailyLog.lunch?.riceKatoris || 0) * 3.8) + 
+    ((currentDailyLog.lunch?.curryKatoris || 0) * 3.5) + 
+    ((currentDailyLog.lunch?.dalKatoris || 0) * 7.0)
   ).toFixed(1));
 
-  const dinnerCal = Math.round(
-    (dailyLog.dinner.riceKatoris * 180) + 
-    (dailyLog.dinner.chapatis * 110) + 
-    (dailyLog.dinner.hasChickenCurry ? 260 : 0) + 
-    (dailyLog.dinner.hasEggCurry ? 180 : 0) + 
-    (dailyLog.dinner.hasVegCurry ? 130 : 0)
+  const dCal = Math.round(
+    ((currentDailyLog.dinner?.riceKatoris || 0) * 180) + 
+    ((currentDailyLog.dinner?.chapatis || 0) * 110) + 
+    (currentDailyLog.dinner?.hasChickenCurry ? 260 : 0) + 
+    (currentDailyLog.dinner?.hasEggCurry ? 180 : 0) + 
+    (currentDailyLog.dinner?.hasVegCurry ? 130 : 0)
   );
-  const dinnerPro = parseFloat((
-    (dailyLog.dinner.riceKatoris * 3.8) + 
-    (dailyLog.dinner.chapatis * 3.2) + 
-    (dailyLog.dinner.hasChickenCurry ? 18.0 : 0) + 
-    (dailyLog.dinner.hasEggCurry ? 8.5 : 0) + 
-    (dailyLog.dinner.hasVegCurry ? 3.0 : 0)
+  const dPro = parseFloat((
+    ((currentDailyLog.dinner?.riceKatoris || 0) * 3.8) + 
+    ((currentDailyLog.dinner?.chapatis || 0) * 3.2) + 
+    (currentDailyLog.dinner?.hasChickenCurry ? 18.0 : 0) + 
+    (currentDailyLog.dinner?.hasEggCurry ? 8.5 : 0) + 
+    (currentDailyLog.dinner?.hasVegCurry ? 3.0 : 0)
   ).toFixed(1));
 
-  const eggCal = dailyLog.standaloneEggs * 75;
-  const eggPro = parseFloat((dailyLog.standaloneEggs * 6.5).toFixed(1));
+  const eggCal = (currentDailyLog.standaloneEggs || 0) * 75;
+  const eggPro = parseFloat(((currentDailyLog.standaloneEggs || 0) * 6.5).toFixed(1));
 
-  const milkCal = dailyLog.extraFoods.milk500ml ? 300 : (dailyLog.extraFoods.milk250ml ? 150 : 0);
-  const milkPro = dailyLog.extraFoods.milk500ml ? 16.5 : (dailyLog.extraFoods.milk250ml ? 8.2 : 0);
-  const bananaCal = dailyLog.extraFoods.bananasCount * 100;
-  const bananaPro = dailyLog.extraFoods.bananasCount * 1.25;
-  const peanutCal = dailyLog.extraFoods.peanuts30g ? 170 : 0;
-  const peanutPro = dailyLog.extraFoods.peanuts30g ? 7.5 : 0;
-  const soyaCal = dailyLog.extraFoods.soyaChunks30g ? 105 : 0;
-  const soyaPro = dailyLog.extraFoods.soyaChunks30g ? 15.5 : 0;
+  const milkCal = currentDailyLog.extraFoods?.milk500ml ? 300 : (currentDailyLog.extraFoods?.milk250ml ? 150 : 0);
+  const milkPro = currentDailyLog.extraFoods?.milk500ml ? 16.5 : (currentDailyLog.extraFoods?.milk250ml ? 8.2 : 0);
+  const bananaCal = (currentDailyLog.extraFoods?.bananasCount || 0) * 100;
+  const bananaPro = (currentDailyLog.extraFoods?.bananasCount || 0) * 1.25;
+  const peanutCal = currentDailyLog.extraFoods?.peanuts30g ? 170 : 0;
+  const peanutPro = currentDailyLog.extraFoods?.peanuts30g ? 7.5 : 0;
+  const soyaCal = currentDailyLog.extraFoods?.soyaChunks30g ? 105 : 0;
+  const soyaPro = currentDailyLog.extraFoods?.soyaChunks30g ? 15.5 : 0;
 
-  const todayCalories = breakfastCal + lunchCal + dinnerCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal;
-  const todayProtein = parseFloat((breakfastPro + lunchPro + dinnerPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
+  const todayCalories = bCal + lCal + dCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal;
+  const todayProtein = parseFloat((bPro + lPro + dPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
 
   const budgetSpent = 1896;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
-      {/* Top Header */}
+      {/* Header */}
       <Header
         todayCalories={todayCalories}
         targetCalories={targetCalories}
@@ -207,18 +239,36 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4 sm:py-6">
-        {/* Navigation Tabs */}
+      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-4 sm:py-6">
+        {/* Navigation Tabs (Google Material pill style) */}
         <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
         {/* Tab Views */}
         {activeTab === 'tracker' && (
           <TrackerTab
-            dailyLog={dailyLog}
-            setDailyLog={setDailyLog}
+            dailyLog={currentDailyLog}
+            setDailyLog={handleUpdateCurrentDayLog}
+            selectedDateKey={selectedDateKey}
+            setSelectedDateKey={setSelectedDateKey}
             targetCalories={targetCalories}
             targetProtein={targetProtein}
             onOpenExport={() => setIsExportModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'calendar' && (
+          <CalendarTab
+            allDailyLogs={allDailyLogs}
+            selectedDateKey={selectedDateKey}
+            setSelectedDateKey={(date) => {
+              setSelectedDateKey(date);
+              setActiveTab('tracker');
+            }}
+            targetCalories={targetCalories}
+            targetProtein={targetProtein}
+            weightHistory={weightHistory}
+            setWeightHistory={setWeightHistory}
+            userProfile={userProfile}
           />
         )}
 
@@ -227,14 +277,6 @@ export default function App() {
             budgetCap={budgetCap}
             setBudgetCap={setBudgetCap}
           />
-        )}
-
-        {activeTab === 'map' && (
-          <StoreMapTab />
-        )}
-
-        {activeTab === 'delivery' && (
-          <QuickCommerceTab />
         )}
 
         {activeTab === 'profile' && (
@@ -251,7 +293,7 @@ export default function App() {
       <WhatsAppExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        dailyLog={dailyLog}
+        dailyLog={currentDailyLog}
         targetCalories={targetCalories}
         targetProtein={targetProtein}
         budgetSpent={budgetSpent}
