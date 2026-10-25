@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
 import { 
   Flame, Dumbbell, Egg, Check, Plus, Minus, 
-  HelpCircle, Utensils, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Sparkles 
+  HelpCircle, Utensils, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, 
+  Sparkles, X, PlusCircle, Tag
 } from 'lucide-react';
 import { HOSTEL_BREAKFAST_OPTIONS } from '../data/defaultData';
+
+export const QUICK_DISH_TEMPLATES = [
+  { name: 'High Protein Curry (Chicken / Fish / Paneer)', calories: 250, protein: 18, category: 'Protein Heavy' },
+  { name: 'Legume Curry (Rajma / Chole / Dal Tadka)', calories: 180, protein: 8, category: 'Medium Protein' },
+  { name: 'Light Veg Curry (Sambar / Rasam / Mixed Veg)', calories: 120, protein: 3, category: 'Light Veg' },
+  { name: 'Extra Cooked Rice (1 standard bowl)', calories: 180, protein: 4, category: 'Carbs' },
+  { name: 'Wheat Roti / Chapati (2 pieces)', calories: 220, protein: 6, category: 'Carbs' },
+  { name: 'Bread Omelette (2 eggs + 2 slices)', calories: 340, protein: 16, category: 'Breakfast' },
+  { name: 'Biryani / Pulao (1 standard plate)', calories: 550, protein: 20, category: 'Heavy Meal' }
+];
 
 export default function TrackerTab({ 
   dailyLog, 
@@ -16,13 +27,22 @@ export default function TrackerTab({
 }) {
   const [showKettleTip, setShowKettleTip] = useState(false);
   const [isBreakfastPickerOpen, setIsBreakfastPickerOpen] = useState(false);
+  const [isCustomFoodModalOpen, setIsCustomFoodModalOpen] = useState(false);
+  const [targetMealForCustom, setTargetMealForCustom] = useState('lunch'); // 'breakfast' | 'lunch' | 'dinner' | 'snack'
+
+  // Custom food form state
+  const [customDishName, setCustomDishName] = useState('');
+  const [customDishCalories, setCustomDishCalories] = useState(200);
+  const [customDishProtein, setCustomDishProtein] = useState(10);
+  const [customDishPortion, setCustomDishPortion] = useState('1 bowl');
 
   const { 
     breakfast, 
     lunch, 
     dinner, 
     extraFoods, 
-    standaloneEggs 
+    standaloneEggs,
+    customItems = [] 
   } = dailyLog;
 
   // Curry eggs count
@@ -77,13 +97,52 @@ export default function TrackerTab({
   const extraCalories = milkCal + bananaCal + peanutCal + soyaCal;
   const extraProtein = parseFloat((milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
 
-  const totalCalories = breakfastCalories + lunchCalories + dinnerCalories + eggCalories + extraCalories;
-  const totalProtein = parseFloat((breakfastProtein + lunchProtein + dinnerProtein + eggProtein + extraProtein).toFixed(1));
+  // Custom items macro sum
+  const customItemsCalories = customItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customItemsProtein = parseFloat(customItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
+
+  const totalCalories = breakfastCalories + lunchCalories + dinnerCalories + eggCalories + extraCalories + customItemsCalories;
+  const totalProtein = parseFloat((breakfastProtein + lunchProtein + dinnerProtein + eggProtein + extraProtein + customItemsProtein).toFixed(1));
 
   const calPercentage = Math.min(100, Math.round((totalCalories / targetCalories) * 100));
   const proPercentage = Math.min(100, Math.round((totalProtein / targetProtein) * 100));
 
-  // Date navigation helpers
+  // Add Custom Food
+  const handleAddCustomFood = (e) => {
+    e.preventDefault();
+    if (!customDishName.trim()) return;
+
+    const newItem = {
+      id: Date.now().toString(),
+      name: customDishName.trim(),
+      portion: customDishPortion,
+      calories: Number(customDishCalories) || 0,
+      protein: Number(customDishProtein) || 0,
+      mealType: targetMealForCustom
+    };
+
+    setDailyLog(prev => ({
+      ...prev,
+      customItems: [...(prev.customItems || []), newItem]
+    }));
+
+    setIsCustomFoodModalOpen(false);
+    setCustomDishName('');
+  };
+
+  const handleRemoveCustomItem = (id) => {
+    setDailyLog(prev => ({
+      ...prev,
+      customItems: (prev.customItems || []).filter(it => it.id !== id)
+    }));
+  };
+
+  const handleSelectTemplate = (tpl) => {
+    setCustomDishName(tpl.name.split('(')[0].trim());
+    setCustomDishCalories(tpl.calories);
+    setCustomDishProtein(tpl.protein);
+  };
+
   const changeDateBy = (days) => {
     const cur = new Date(selectedDateKey);
     cur.setDate(cur.getDate() + days);
@@ -99,7 +158,7 @@ export default function TrackerTab({
 
   return (
     <div className="space-y-5 pb-20 md:pb-6 animate-fadeIn">
-      {/* 1. Date Switcher (Google Style) */}
+      {/* 1. Date Switcher */}
       <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-3 py-2">
         <button
           onClick={() => changeDateBy(-1)}
@@ -124,7 +183,7 @@ export default function TrackerTab({
         </button>
       </div>
 
-      {/* 2. Google Fit Style Hero Progress Card */}
+      {/* 2. Hero Progress Card */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -137,14 +196,13 @@ export default function TrackerTab({
             </div>
             <p className="text-xs text-slate-400 mt-1">
               {totalCalories >= targetCalories ? (
-                <span className="text-emerald-400 font-semibold">Lean bulk surplus goal achieved! 🎉</span>
+                <span className="text-emerald-400 font-semibold">Lean bulk surplus achieved today! 🎉</span>
               ) : (
-                <span><strong>{targetCalories - totalCalories} kcal</strong> needed today for steady weight gain</span>
+                <span><strong>{targetCalories - totalCalories} kcal</strong> needed today for clean muscle gain</span>
               )}
             </p>
           </div>
 
-          {/* Protein Pill */}
           <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 self-start sm:self-auto sm:text-right min-w-[130px]">
             <span className="text-[11px] text-slate-400 font-medium block">Protein Progress</span>
             <span className="text-xl font-bold text-emerald-400">{totalProtein}g</span>
@@ -182,12 +240,12 @@ export default function TrackerTab({
         </div>
       </section>
 
-      {/* 3. The 4 Bulking Pillars Checklist (Google Tasks Style) */}
+      {/* 3. The 4 Bulking Staples Checklist */}
       <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-bold text-white text-base">The 4 Bulking Staples</h3>
-            <p className="text-xs text-slate-400">+775 kcal and +42g protein (under ₹2,000/mo)</p>
+            <p className="text-xs text-slate-400">+775 kcal and +42g protein (under ₹2,000/mo cap)</p>
           </div>
           <button
             onClick={() => setShowKettleTip(!showKettleTip)}
@@ -206,7 +264,7 @@ export default function TrackerTab({
         )}
 
         <div className="space-y-2 pt-1">
-          {/* Item 1: Milk */}
+          {/* Milk */}
           <div 
             onClick={() => setDailyLog(prev => ({
               ...prev,
@@ -232,7 +290,7 @@ export default function TrackerTab({
             </span>
           </div>
 
-          {/* Item 2: Bananas */}
+          {/* Bananas */}
           <div className={`p-3 rounded-xl border flex items-center justify-between transition ${
             extraFoods.bananasCount === 2 ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-slate-950 border-slate-800'
           }`}>
@@ -276,7 +334,7 @@ export default function TrackerTab({
             </div>
           </div>
 
-          {/* Item 3: Peanuts */}
+          {/* Peanuts */}
           <div 
             onClick={() => setDailyLog(prev => ({
               ...prev,
@@ -302,7 +360,7 @@ export default function TrackerTab({
             </span>
           </div>
 
-          {/* Item 4: Soya Chunks */}
+          {/* Soya Chunks */}
           <div 
             onClick={() => setDailyLog(prev => ({
               ...prev,
@@ -320,7 +378,7 @@ export default function TrackerTab({
               </div>
               <div>
                 <p className="text-xs font-semibold text-white">Soya Chunks (30g dry, kettle cooked)</p>
-                <p className="text-[11px] text-slate-500">+105 kcal • 15.5g complete protein</p>
+                <p className="text-[11px] text-slate-500">+105 kcal • 15.5g protein</p>
               </div>
             </div>
             <span className="text-[11px] font-semibold text-emerald-400">
@@ -328,7 +386,7 @@ export default function TrackerTab({
             </span>
           </div>
 
-          {/* Item 5: Daily 3 Eggs */}
+          {/* Daily Eggs */}
           <div className="p-3 rounded-xl border border-slate-800 bg-slate-950 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-md bg-amber-500/15 text-amber-400 flex items-center justify-center">
@@ -366,9 +424,24 @@ export default function TrackerTab({
         </div>
       </section>
 
-      {/* 4. Hostel Regular Meals (Clean Material Selector) */}
-      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-        <h3 className="font-bold text-white text-base">Hostel Meals (Katoris & Pieces)</h3>
+      {/* 4. Hostel Meals & Custom Dishes */}
+      <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-white text-base">Hostel Meals & Curries</h3>
+            <p className="text-xs text-slate-400">Measured in standard <strong>katoris (≈200ml bowls)</strong></p>
+          </div>
+          <button
+            onClick={() => {
+              setTargetMealForCustom('lunch');
+              setIsCustomFoodModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-semibold transition active:scale-95"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>+ Add Other Dish / Curry</span>
+          </button>
+        </div>
 
         {/* Breakfast Picker */}
         <div className="space-y-1.5">
@@ -414,82 +487,94 @@ export default function TrackerTab({
           </div>
         </div>
 
-        {/* Lunch Steppers */}
+        {/* Lunch Steppers (Clear Bowls / Katoris metric!) */}
         <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
           <div className="flex justify-between items-center text-xs">
             <span className="text-slate-400 font-medium">Lunch</span>
             <span className="text-slate-300 font-semibold">{lunchCalories} kcal • {lunchProtein}g</span>
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-300">Rice</span>
-              <div className="flex items-center gap-1">
+            {/* Rice */}
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <span className="text-slate-300 font-semibold block">Rice</span>
+                <span className="text-[10px] text-slate-500">~200ml bowl</span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, riceKatoris: Math.max(0, prev.lunch.riceKatoris - 0.5) }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="font-bold text-white w-6 text-center">{lunch.riceKatoris}k</span>
+                <span className="font-bold text-white text-xs">{lunch.riceKatoris} bowls</span>
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, riceKatoris: prev.lunch.riceKatoris + 0.5 }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-300">Curry</span>
-              <div className="flex items-center gap-1">
+            {/* Veg Curry */}
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <span className="text-slate-300 font-semibold block">Veg Curry</span>
+                <span className="text-[10px] text-slate-500">Hostel curry</span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, curryKatoris: Math.max(0, prev.lunch.curryKatoris - 0.5) }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="font-bold text-white w-6 text-center">{lunch.curryKatoris}k</span>
+                <span className="font-bold text-white text-xs">{lunch.curryKatoris} bowls</span>
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, curryKatoris: prev.lunch.curryKatoris + 0.5 }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-              <span className="text-slate-300">Dal</span>
-              <div className="flex items-center gap-1">
+            {/* Dal */}
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-between">
+              <div>
+                <span className="text-slate-300 font-semibold block">Dal / Sambar</span>
+                <span className="text-[10px] text-slate-500">Yellow dal</span>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-850">
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, dalKatoris: Math.max(0, prev.lunch.dalKatoris - 0.5) }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="font-bold text-white w-6 text-center">{lunch.dalKatoris}k</span>
+                <span className="font-bold text-white text-xs">{lunch.dalKatoris} bowls</span>
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
                     lunch: { ...prev.lunch, dalKatoris: prev.lunch.dalKatoris + 0.5 }
                   }))}
-                  className="p-0.5 hover:bg-slate-800 rounded text-slate-400"
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -517,7 +602,7 @@ export default function TrackerTab({
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="font-bold text-white w-6 text-center">{dinner.chapatis}</span>
+                <span className="font-bold text-white w-6 text-center">{dinner.chapatis} pcs</span>
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
@@ -542,7 +627,7 @@ export default function TrackerTab({
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="font-bold text-white w-6 text-center">{dinner.riceKatoris}k</span>
+                <span className="font-bold text-white w-6 text-center">{dinner.riceKatoris} bowls</span>
                 <button
                   onClick={() => setDailyLog(prev => ({
                     ...prev,
@@ -588,7 +673,137 @@ export default function TrackerTab({
             </button>
           </div>
         </div>
+
+        {/* 5. Custom Logged Items List */}
+        {customItems.length > 0 && (
+          <div className="pt-2 border-t border-slate-800/80 space-y-2">
+            <span className="text-[11px] font-semibold text-slate-400 block uppercase">
+              Extra Added Dishes ({customItems.length}):
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {customItems.map((item) => (
+                <div 
+                  key={item.id} 
+                  className="bg-slate-950 px-3 py-1.5 rounded-xl border border-emerald-500/30 text-xs flex items-center gap-2"
+                >
+                  <div>
+                    <span className="font-semibold text-white">{item.name}</span>
+                    <span className="text-slate-500 text-[10px] ml-1">({item.portion})</span>
+                    <span className="text-emerald-400 text-[11px] font-mono ml-2">+{item.calories} kcal • +{item.protein}g</span>
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveCustomItem(item.id)}
+                    className="p-0.5 text-slate-500 hover:text-red-400 rounded transition"
+                    title="Remove item"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
+
+      {/* Custom Food & Curry Modal */}
+      {isCustomFoodModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="font-bold text-white text-base">Add Any Dish / Curry</h3>
+                <p className="text-xs text-slate-400">Log any curry, special dish, or snack eaten outside</p>
+              </div>
+              <button 
+                onClick={() => setIsCustomFoodModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Quick Templates */}
+            <div>
+              <span className="text-[11px] font-semibold text-slate-400 block mb-2 uppercase">Quick Templates (Tap to fill):</span>
+              <div className="grid grid-cols-2 gap-1.5">
+                {QUICK_DISH_TEMPLATES.map((tpl, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelectTemplate(tpl)}
+                    className="p-2 rounded-lg bg-slate-950 hover:bg-slate-850 border border-slate-800 text-left text-xs transition"
+                  >
+                    <p className="font-semibold text-white truncate">{tpl.name.split('(')[0]}</p>
+                    <p className="text-[10px] text-emerald-400">~{tpl.calories} kcal • {tpl.protein}g pro</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <form onSubmit={handleAddCustomFood} className="space-y-3 pt-2 border-t border-slate-800">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Dish Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Paneer Butter Masala, Fish Curry, Maggi..."
+                  value={customDishName}
+                  onChange={(e) => setCustomDishName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Portion</label>
+                  <input
+                    type="text"
+                    placeholder="1 bowl"
+                    value={customDishPortion}
+                    onChange={(e) => setCustomDishPortion(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Calories (kcal)</label>
+                  <input
+                    type="number"
+                    value={customDishCalories}
+                    onChange={(e) => setCustomDishCalories(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Protein (g)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={customDishProtein}
+                    onChange={(e) => setCustomDishProtein(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomFoodModalOpen(false)}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition shadow-sm"
+                >
+                  Add to Today's Log
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

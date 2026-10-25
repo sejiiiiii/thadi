@@ -218,8 +218,11 @@ export default function App() {
   const soyaCal = currentDailyLog.extraFoods?.soyaChunks30g ? 105 : 0;
   const soyaPro = currentDailyLog.extraFoods?.soyaChunks30g ? 15.5 : 0;
 
-  const todayCalories = bCal + lCal + dCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal;
-  const todayProtein = parseFloat((bPro + lPro + dPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro).toFixed(1));
+  const customCal = (currentDailyLog.customItems || []).reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customPro = (currentDailyLog.customItems || []).reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
+
+  const todayCalories = bCal + lCal + dCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal + customCal;
+  const todayProtein = parseFloat((bPro + lPro + dPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro + customPro).toFixed(1));
 
   const budgetSpent = 1896;
 
