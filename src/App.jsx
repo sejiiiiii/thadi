@@ -54,15 +54,12 @@ export default function App() {
 
   // Master Daily Logs Store: { [dateKey]: logData }
   const [allDailyLogs, setAllDailyLogs] = useState(() => {
-    const isV2Initialized = localStorage.getItem('thadi_v2_clean_init');
     const saved = localStorage.getItem('thadi_all_daily_logs');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // If loading this clean release for the first time on mobile or browser, reset today to 0s
-        if (!isV2Initialized || (parsed[todayKey] && parsed[todayKey].extraFoods?.milk500ml && parsed[todayKey].extraFoods?.peanuts30g)) {
+        if (!parsed[todayKey]) {
           parsed[todayKey] = createEmptyDailyLog();
-          localStorage.setItem('thadi_v2_clean_init', 'true');
         }
         return parsed;
       } catch (err) {
@@ -70,7 +67,6 @@ export default function App() {
       }
     }
 
-    localStorage.setItem('thadi_v2_clean_init', 'true');
     // Default clean starting today log (starts completely at 0)
     return {
       [todayKey]: createEmptyDailyLog()
@@ -84,10 +80,24 @@ export default function App() {
     setAllDailyLogs(prev => {
       const existing = prev[selectedDateKey] || createEmptyDailyLog();
       const updated = typeof updater === 'function' ? updater(existing) : updater;
-      return {
+      const nextAll = {
         ...prev,
         [selectedDateKey]: updated
       };
+      
+      // Save immediately to localStorage
+      try {
+        localStorage.setItem('thadi_all_daily_logs', JSON.stringify(nextAll));
+      } catch (e) {
+        console.error("localStorage save error:", e);
+      }
+      
+      // Save immediately to Firestore if authenticated
+      if (currentUser && db) {
+        setDoc(doc(db, 'users', currentUser.uid), { allDailyLogs: nextAll }, { merge: true }).catch(console.error);
+      }
+
+      return nextAll;
     });
   };
 
@@ -131,13 +141,26 @@ export default function App() {
           localStorage.setItem('thadi_budget_cap', data.budgetCap.toString());
         }
         if (data.allDailyLogs) {
-          setAllDailyLogs(data.allDailyLogs);
-          localStorage.setItem('thadi_all_daily_logs', JSON.stringify(data.allDailyLogs));
+          setAllDailyLogs(prev => {
+            const merged = { ...data.allDailyLogs, ...prev };
+            localStorage.setItem('thadi_all_daily_logs', JSON.stringify(merged));
+            return merged;
+          });
         }
         if (data.savedDishes) {
           setSavedDishes(data.savedDishes);
           localStorage.setItem('thadi_saved_dishes', JSON.stringify(data.savedDishes));
         }
+      } else {
+        // First-time sync: push local data to Firestore
+        setDoc(userDocRef, {
+          profile: userProfile,
+          weightHistory,
+          budgetCap,
+          allDailyLogs,
+          savedDishes,
+          updatedAt: new Date().toISOString()
+        }, { merge: true }).catch(console.error);
       }
     }, (err) => {
       console.warn("Firestore sync notice:", err);
@@ -196,25 +219,25 @@ export default function App() {
   const bPro = currentDailyLog.breakfast?.protein || 0;
 
   const lCal = Math.round(
-    ((currentDailyLog.lunch?.riceKatoris || 0) * 180) + 
-    ((currentDailyLog.lunch?.curryKatoris || 0) * 140) + 
-    ((currentDailyLog.lunch?.dalKatoris || 0) * 150)
+    (((currentDailyLog.lunch?.ricePanjaSpoons ?? currentDailyLog.lunch?.riceKatoris) || 0) * 180) + 
+    (((currentDailyLog.lunch?.curryScoops ?? currentDailyLog.lunch?.curryKatoris) || 0) * 140) + 
+    (((currentDailyLog.lunch?.dalScoops ?? currentDailyLog.lunch?.dalKatoris) || 0) * 150)
   );
   const lPro = parseFloat((
-    ((currentDailyLog.lunch?.riceKatoris || 0) * 3.8) + 
-    ((currentDailyLog.lunch?.curryKatoris || 0) * 3.5) + 
-    ((currentDailyLog.lunch?.dalKatoris || 0) * 7.0)
+    (((currentDailyLog.lunch?.ricePanjaSpoons ?? currentDailyLog.lunch?.riceKatoris) || 0) * 3.8) + 
+    (((currentDailyLog.lunch?.curryScoops ?? currentDailyLog.lunch?.curryKatoris) || 0) * 3.5) + 
+    (((currentDailyLog.lunch?.dalScoops ?? currentDailyLog.lunch?.dalKatoris) || 0) * 7.0)
   ).toFixed(1));
 
   const dCal = Math.round(
-    ((currentDailyLog.dinner?.riceKatoris || 0) * 180) + 
+    (((currentDailyLog.dinner?.ricePanjaSpoons ?? currentDailyLog.dinner?.riceKatoris) || 0) * 180) + 
     ((currentDailyLog.dinner?.chapatis || 0) * 110) + 
     (currentDailyLog.dinner?.hasChickenCurry ? 260 : 0) + 
     (currentDailyLog.dinner?.hasEggCurry ? 180 : 0) + 
     (currentDailyLog.dinner?.hasVegCurry ? 130 : 0)
   );
   const dPro = parseFloat((
-    ((currentDailyLog.dinner?.riceKatoris || 0) * 3.8) + 
+    (((currentDailyLog.dinner?.ricePanjaSpoons ?? currentDailyLog.dinner?.riceKatoris) || 0) * 3.8) + 
     ((currentDailyLog.dinner?.chapatis || 0) * 3.2) + 
     (currentDailyLog.dinner?.hasChickenCurry ? 18.0 : 0) + 
     (currentDailyLog.dinner?.hasEggCurry ? 8.5 : 0) + 
@@ -274,6 +297,8 @@ export default function App() {
             targetProtein={targetProtein}
             savedDishes={savedDishes}
             setSavedDishes={setSavedDishes}
+            currentUser={currentUser}
+            isSyncing={isSyncing}
             onResetDay={handleResetCurrentDayLog}
             onOpenExport={() => setIsExportModalOpen(true)}
           />

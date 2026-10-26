@@ -41,25 +41,25 @@ export default function CalendarTab({
     const bPro = log.breakfast?.protein || 0;
 
     const lCal = Math.round(
-      ((log.lunch?.riceKatoris || 0) * 180) + 
-      ((log.lunch?.curryKatoris || 0) * 140) + 
-      ((log.lunch?.dalKatoris || 0) * 150)
+      (((log.lunch?.ricePanjaSpoons ?? log.lunch?.riceKatoris) || 0) * 180) + 
+      (((log.lunch?.curryScoops ?? log.lunch?.curryKatoris) || 0) * 140) + 
+      (((log.lunch?.dalScoops ?? log.lunch?.dalKatoris) || 0) * 150)
     );
     const lPro = parseFloat((
-      ((log.lunch?.riceKatoris || 0) * 3.8) + 
-      ((log.lunch?.curryKatoris || 0) * 3.5) + 
-      ((log.lunch?.dalKatoris || 0) * 7.0)
+      (((log.lunch?.ricePanjaSpoons ?? log.lunch?.riceKatoris) || 0) * 3.8) + 
+      (((log.lunch?.curryScoops ?? log.lunch?.curryKatoris) || 0) * 3.5) + 
+      (((log.lunch?.dalScoops ?? log.lunch?.dalKatoris) || 0) * 7.0)
     ).toFixed(1));
 
     const dCal = Math.round(
-      ((log.dinner?.riceKatoris || 0) * 180) + 
+      (((log.dinner?.ricePanjaSpoons ?? log.dinner?.riceKatoris) || 0) * 180) + 
       ((log.dinner?.chapatis || 0) * 110) + 
       (log.dinner?.hasChickenCurry ? 260 : 0) + 
       (log.dinner?.hasEggCurry ? 180 : 0) + 
       (log.dinner?.hasVegCurry ? 130 : 0)
     );
     const dPro = parseFloat((
-      ((log.dinner?.riceKatoris || 0) * 3.8) + 
+      (((log.dinner?.ricePanjaSpoons ?? log.dinner?.riceKatoris) || 0) * 3.8) + 
       ((log.dinner?.chapatis || 0) * 3.2) + 
       (log.dinner?.hasChickenCurry ? 18.0 : 0) + 
       (log.dinner?.hasEggCurry ? 8.5 : 0) + 

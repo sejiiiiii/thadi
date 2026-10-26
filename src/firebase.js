@@ -16,13 +16,13 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyB8a9cAUDsKkmrLa8zWvOV73wJ3DbAKMz8",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "thadi-be51b.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "thadi-be51b",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "thadi-be51b.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "999011807810",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:999011807810:web:3ea3ad56eaa661327a73db",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-YXYTVV7BQP"
 };
 
 // Only initialize if API key is present

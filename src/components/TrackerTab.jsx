@@ -6,6 +6,7 @@ import {
   BookOpen, Trash2, RotateCcw, Search, BookmarkCheck, ArrowRight
 } from 'lucide-react';
 import { HOSTEL_BREAKFAST_OPTIONS, FOOD_BASE_CATEGORIES, PORTION_SIZES } from '../data/defaultData';
+import { loginWithGoogle } from '../firebase';
 
 export default function TrackerTab({ 
   dailyLog, 
@@ -16,6 +17,8 @@ export default function TrackerTab({
   targetProtein,
   savedDishes = [],
   setSavedDishes = () => {},
+  currentUser = null,
+  isSyncing = false,
   onResetDay = () => {},
   onOpenExport
 }) {
@@ -37,7 +40,7 @@ export default function TrackerTab({
   const [customDishName, setCustomDishName] = useState('');
   const [customDishCalories, setCustomDishCalories] = useState(190);
   const [customDishProtein, setCustomDishProtein] = useState(9);
-  const [customDishPortion, setCustomDishPortion] = useState('1 Standard Bowl (~200ml)');
+  const [customDishPortion, setCustomDishPortion] = useState('1 Scoop / Panja (~200ml)');
   const [saveToLibraryCheckbox, setSaveToLibraryCheckbox] = useState(true);
   const [customDishCategory, setCustomDishCategory] = useState('Curries / Dal');
   const [customDishIsEgg, setCustomDishIsEgg] = useState(false);
@@ -49,12 +52,17 @@ export default function TrackerTab({
   // Destructure daily log with clean 0 defaults
   const { 
     breakfast = { name: '', calories: 0, protein: 0, isCustom: false, isEggCurry: false }, 
-    lunch = { riceKatoris: 0, curryKatoris: 0, dalKatoris: 0 }, 
-    dinner = { riceKatoris: 0, chapatis: 0, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: false }, 
+    lunch = { riceKatoris: 0, ricePanjaSpoons: 0, curryKatoris: 0, curryScoops: 0, dalKatoris: 0, dalScoops: 0 }, 
+    dinner = { riceKatoris: 0, ricePanjaSpoons: 0, chapatis: 0, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: false }, 
     extraFoods = { milk500ml: false, milk250ml: false, bananasCount: 0, peanuts30g: false, soyaChunks30g: false }, 
     standaloneEggs = 0,
     customItems = [] 
   } = dailyLog || {};
+
+  const lunchRiceCount = lunch.ricePanjaSpoons ?? lunch.riceKatoris ?? 0;
+  const lunchCurryCount = lunch.curryScoops ?? lunch.curryKatoris ?? 0;
+  const lunchDalCount = lunch.dalScoops ?? lunch.dalKatoris ?? 0;
+  const dinnerRiceCount = dinner.ricePanjaSpoons ?? dinner.riceKatoris ?? 0;
 
   // Auto-calculate macros for visual estimator
   const computeVisualEstimate = (baseId, portionId, oily) => {
@@ -134,14 +142,14 @@ export default function TrackerTab({
 
   // Lunch calculations
   const baseLunchCal = Math.round(
-    ((lunch.riceKatoris || 0) * 180) + 
-    ((lunch.curryKatoris || 0) * 140) + 
-    ((lunch.dalKatoris || 0) * 150)
+    (lunchRiceCount * 180) + 
+    (lunchCurryCount * 140) + 
+    (lunchDalCount * 150)
   );
   const baseLunchPro = parseFloat((
-    ((lunch.riceKatoris || 0) * 3.8) + 
-    ((lunch.curryKatoris || 0) * 3.5) + 
-    ((lunch.dalKatoris || 0) * 7.0)
+    (lunchRiceCount * 3.8) + 
+    (lunchCurryCount * 3.5) + 
+    (lunchDalCount * 7.0)
   ).toFixed(1));
   const customLunchCal = lunchCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
   const customLunchPro = parseFloat(lunchCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0).toFixed(1));
@@ -150,14 +158,14 @@ export default function TrackerTab({
 
   // Dinner calculations
   const baseDinnerCal = Math.round(
-    ((dinner.riceKatoris || 0) * 180) + 
+    (dinnerRiceCount * 180) + 
     ((dinner.chapatis || 0) * 110) + 
     (dinner.hasChickenCurry ? 260 : 0) + 
     (dinner.hasEggCurry ? 180 : 0) + 
     (dinner.hasVegCurry ? 130 : 0)
   );
   const baseDinnerPro = parseFloat((
-    ((dinner.riceKatoris || 0) * 3.8) + 
+    (dinnerRiceCount * 3.8) + 
     ((dinner.chapatis || 0) * 3.2) + 
     (dinner.hasChickenCurry ? 18.0 : 0) + 
     (dinner.hasEggCurry ? 8.5 : 0) + 
@@ -401,6 +409,29 @@ export default function TrackerTab({
         </div>
       </div>
 
+      {/* Cloud Sync Status Banner */}
+      <div className="flex items-center justify-between px-3.5 py-2 rounded-2xl bg-slate-900/50 border border-white/[0.06] text-[11px]">
+        {currentUser ? (
+          <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Saved & Synced Globally ☁️ ({currentUser.displayName || currentUser.email?.split('@')[0]})</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between w-full">
+            <span className="text-slate-400">💾 Saved to this device</span>
+            <button
+              onClick={() => loginWithGoogle().catch(err => alert("Sign-in: " + err.message))}
+              className="text-emerald-400 hover:text-emerald-300 font-bold underline flex items-center gap-1"
+            >
+              Sign in to Sync Globally ☁️ →
+            </button>
+          </div>
+        )}
+        {isSyncing && (
+          <span className="text-[10px] text-slate-400 animate-pulse ml-2">Syncing...</span>
+        )}
+      </div>
+
       {/* 2. Hero Energy Gauge Card */}
       <div className="bg-slate-900/60 p-1 rounded-3xl border border-white/[0.08] shadow-xl">
         <div className="bg-slate-950/80 rounded-[calc(1.5rem-2px)] p-5 space-y-4">
@@ -488,7 +519,7 @@ export default function TrackerTab({
               className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 underline"
             >
               <Info className="w-3 h-3" />
-              <span>Hostel Portions Guide</span>
+              <span>Hostel Spoons & Portions Guide</span>
             </button>
           </div>
         </div>
@@ -500,20 +531,24 @@ export default function TrackerTab({
           <div className="flex items-center justify-between font-bold text-white">
             <span className="flex items-center gap-1.5">
               <Utensils className="w-4 h-4 text-emerald-400" />
-              <span>No-Scale Hostel Portion Estimator</span>
+              <span>Hostel Mess Portion & Spoon Estimator</span>
             </span>
             <button onClick={() => setShowPortionGuide(false)} className="text-slate-500 hover:text-white">
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06]">
-              <span className="font-bold text-white block">1 Katori / Bowl (~200ml)</span>
-              <span className="text-slate-400">Equal to your closed fist size (Rice ~180 kcal, Dal ~150 kcal).</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06] space-y-1">
+              <span className="font-bold text-emerald-400 block">🥄 1 Panja Rice Spoon (~150g)</span>
+              <p className="text-slate-400 leading-relaxed">
+                The slotted / flat large metal serving spoon used for rice in the mess (~180 kcal, ~3.8g protein). The only spoon used when serving rice.
+              </p>
             </div>
-            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06]">
-              <span className="font-bold text-white block">1 Half Katori (~100ml)</span>
-              <span className="text-slate-400">Cupped hand volume. Ideal for thick gravies and curries.</span>
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-white/[0.06] space-y-1">
+              <span className="font-bold text-emerald-400 block">🥣 1 Long-Handle Curry Scoop</span>
+              <p className="text-slate-400 leading-relaxed">
+                The round deep ladle spoon used for curries and dal. <b>1 scoop is enough for 3 panja spoons of rice</b> (~140 kcal curry, ~150 kcal dal).
+              </p>
             </div>
           </div>
         </div>
@@ -808,23 +843,30 @@ export default function TrackerTab({
             <div className="grid grid-cols-3 gap-2 text-xs">
               {/* Rice */}
               <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
-                <span className="text-[10px] text-slate-400 block font-medium">Rice (bowls)</span>
+                <span className="text-[10px] text-slate-300 block font-semibold leading-tight">Rice (Panja Spoons)</span>
+                <span className="text-[9px] text-slate-500 block">~150g / spoon</span>
                 <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, riceKatoris: Math.max(0, (prev.lunch?.riceKatoris || 0) - 0.5) }
-                    }))}
+                    onClick={() => {
+                      const newCount = Math.max(0, lunchRiceCount - 0.5);
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, riceKatoris: newCount, ricePanjaSpoons: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Minus className="w-3 h-3 mx-auto" />
                   </button>
-                  <span className="font-mono font-bold text-white text-xs">{lunch.riceKatoris || 0}</span>
+                  <span className="font-mono font-bold text-white text-xs">{lunchRiceCount}</span>
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, riceKatoris: (prev.lunch?.riceKatoris || 0) + 0.5 }
-                    }))}
+                    onClick={() => {
+                      const newCount = lunchRiceCount + 0.5;
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, riceKatoris: newCount, ricePanjaSpoons: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Plus className="w-3 h-3 mx-auto" />
@@ -834,23 +876,30 @@ export default function TrackerTab({
 
               {/* Curry */}
               <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
-                <span className="text-[10px] text-slate-400 block font-medium">Mess Curry (bowls)</span>
+                <span className="text-[10px] text-slate-300 block font-semibold leading-tight">Mess Curry (Scoops)</span>
+                <span className="text-[9px] text-slate-500 block">Long-handle</span>
                 <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, curryKatoris: Math.max(0, (prev.lunch?.curryKatoris || 0) - 0.5) }
-                    }))}
+                    onClick={() => {
+                      const newCount = Math.max(0, lunchCurryCount - 0.5);
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, curryKatoris: newCount, curryScoops: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Minus className="w-3 h-3 mx-auto" />
                   </button>
-                  <span className="font-mono font-bold text-white text-xs">{lunch.curryKatoris || 0}</span>
+                  <span className="font-mono font-bold text-white text-xs">{lunchCurryCount}</span>
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, curryKatoris: (prev.lunch?.curryKatoris || 0) + 0.5 }
-                    }))}
+                    onClick={() => {
+                      const newCount = lunchCurryCount + 0.5;
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, curryKatoris: newCount, curryScoops: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Plus className="w-3 h-3 mx-auto" />
@@ -860,29 +909,44 @@ export default function TrackerTab({
 
               {/* Dal */}
               <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
-                <span className="text-[10px] text-slate-400 block font-medium">Dal (bowls)</span>
+                <span className="text-[10px] text-slate-300 block font-semibold leading-tight">Dal (Scoops)</span>
+                <span className="text-[9px] text-slate-500 block">Long-handle</span>
                 <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, dalKatoris: Math.max(0, (prev.lunch?.dalKatoris || 0) - 0.5) }
-                    }))}
+                    onClick={() => {
+                      const newCount = Math.max(0, lunchDalCount - 0.5);
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, dalKatoris: newCount, dalScoops: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Minus className="w-3 h-3 mx-auto" />
                   </button>
-                  <span className="font-mono font-bold text-white text-xs">{lunch.dalKatoris || 0}</span>
+                  <span className="font-mono font-bold text-white text-xs">{lunchDalCount}</span>
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      lunch: { ...prev.lunch, dalKatoris: (prev.lunch?.dalKatoris || 0) + 0.5 }
-                    }))}
+                    onClick={() => {
+                      const newCount = lunchDalCount + 0.5;
+                      setDailyLog(prev => ({
+                        ...prev,
+                        lunch: { ...prev.lunch, dalKatoris: newCount, dalScoops: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Plus className="w-3 h-3 mx-auto" />
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Serving Guide Helper banner */}
+            <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl px-3 py-2 flex items-center gap-2 text-[11px] text-emerald-300/90">
+              <span className="text-base leading-none">🥄</span>
+              <p className="leading-tight">
+                <span className="font-bold text-white">1 Long-Handle Curry Scoop</span> is enough for <span className="font-bold text-emerald-300">3 Panja Spoons</span> of rice.
+              </p>
             </div>
 
             {/* Custom items / curries added to Lunch */}
@@ -942,23 +1006,30 @@ export default function TrackerTab({
             {/* Steppers for Rice & Chapatis */}
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-2xl bg-slate-900/70 border border-white/[0.06] text-center space-y-1">
-                <span className="text-[10px] text-slate-400 block font-medium">Rice (bowls)</span>
+                <span className="text-[10px] text-slate-300 block font-semibold leading-tight">Rice (Panja Spoons)</span>
+                <span className="text-[9px] text-slate-500 block">~150g / spoon</span>
                 <div className="flex items-center justify-between bg-slate-950 rounded-xl px-1.5 py-1">
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      dinner: { ...prev.dinner, riceKatoris: Math.max(0, (prev.dinner?.riceKatoris || 0) - 0.5) }
-                    }))}
+                    onClick={() => {
+                      const newCount = Math.max(0, dinnerRiceCount - 0.5);
+                      setDailyLog(prev => ({
+                        ...prev,
+                        dinner: { ...prev.dinner, riceKatoris: newCount, ricePanjaSpoons: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Minus className="w-3 h-3 mx-auto" />
                   </button>
-                  <span className="font-mono font-bold text-white text-xs">{dinner.riceKatoris || 0}</span>
+                  <span className="font-mono font-bold text-white text-xs">{dinnerRiceCount}</span>
                   <button
-                    onClick={() => setDailyLog(prev => ({
-                      ...prev,
-                      dinner: { ...prev.dinner, riceKatoris: (prev.dinner?.riceKatoris || 0) + 0.5 }
-                    }))}
+                    onClick={() => {
+                      const newCount = dinnerRiceCount + 0.5;
+                      setDailyLog(prev => ({
+                        ...prev,
+                        dinner: { ...prev.dinner, riceKatoris: newCount, ricePanjaSpoons: newCount }
+                      }));
+                    }}
                     className="w-5 h-5 text-slate-400 hover:text-white"
                   >
                     <Plus className="w-3 h-3 mx-auto" />
@@ -1428,16 +1499,21 @@ export default function TrackerTab({
                               onClick={() => handlePortionChange(p.id)}
                               className={`p-2 rounded-2xl border text-center text-xs transition active:scale-95 ${
                                 isSelected 
-                                  ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold' 
+                                  ? 'bg-emerald-500/15 border-emerald-500 text-white font-bold ring-1 ring-emerald-500/30' 
                                   : 'bg-slate-950 border-white/[0.06] text-slate-300'
                               }`}
                             >
-                              <span className="block font-bold text-[11px]">{p.label.split('(')[0]}</span>
+                              <span className="block font-bold text-[11px] truncate">{p.label.split('(')[0]}</span>
                               <span className="text-[9px] text-slate-400">{p.volumeMl ? `${p.volumeMl}ml` : 'pcs'}</span>
                             </button>
                           );
                         })}
                       </div>
+                      {selectedPortionId && (
+                        <span className="text-[10px] text-slate-400 mt-1 block italic">
+                          💡 {PORTION_SIZES.find(p => p.id === selectedPortionId)?.desc}
+                        </span>
+                      )}
                     </div>
 
                     {/* Extra Oily toggle */}

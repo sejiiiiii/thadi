@@ -145,7 +145,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_dal_tadka',
     name: 'Hostel Dal Tadka / Yellow Dal',
     category: 'Curries / Dal',
-    portion: '1 katori (~200ml)',
+    portion: '1 scoop (~180ml, for 3 panja rice)',
     calories: 160,
     protein: 7.5,
     isEggCurry: false,
@@ -155,7 +155,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_chana_masala',
     name: 'Chana Masala / Chickpea Curry',
     category: 'Curries / Dal',
-    portion: '1 katori (~200ml)',
+    portion: '1 scoop (~180ml, for 3 panja rice)',
     calories: 210,
     protein: 9.0,
     isEggCurry: false,
@@ -165,7 +165,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_rajma_masala',
     name: 'Rajma Masala (Kidney Beans Curry)',
     category: 'Curries / Dal',
-    portion: '1 katori (~200ml)',
+    portion: '1 scoop (~180ml, for 3 panja rice)',
     calories: 220,
     protein: 9.5,
     isEggCurry: false,
@@ -175,7 +175,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_soya_curry',
     name: 'Soya Chunks Curry / Gravy',
     category: 'Curries / Dal',
-    portion: '1 katori (~200ml)',
+    portion: '1 scoop (~180ml, for 3 panja rice)',
     calories: 180,
     protein: 16.0,
     isEggCurry: false,
@@ -185,7 +185,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_paneer_curry',
     name: 'Paneer Masala / Matar Paneer',
     category: 'Curries / Dal',
-    portion: '1 katori (~200ml)',
+    portion: '1 scoop (~180ml, for 3 panja rice)',
     calories: 260,
     protein: 11.0,
     isEggCurry: false,
@@ -205,7 +205,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_fish_curry',
     name: 'Mangalorean Fish Curry (Meen Gassi)',
     category: 'Non-Veg',
-    portion: '1 bowl with 1 piece fish',
+    portion: '1 scoop with 1 piece fish',
     calories: 190,
     protein: 17.0,
     isEggCurry: false,
@@ -215,7 +215,7 @@ export const DEFAULT_SAVED_DISHES = [
     id: 'dish_egg_curry_hostel',
     name: 'Mess Egg Curry (2 eggs in gravy)',
     category: 'Non-Veg',
-    portion: '1 bowl (2 eggs)',
+    portion: '1 scoop (2 eggs)',
     calories: 230,
     protein: 14.0,
     isEggCurry: true,
@@ -257,8 +257,8 @@ export const DEFAULT_SAVED_DISHES = [
 // Helper to create an empty, unlogged clean daily log (all 0s)
 export const createEmptyDailyLog = () => ({
   breakfast: { name: '', calories: 0, protein: 0, isCustom: false, isEggCurry: false },
-  lunch: { riceKatoris: 0, curryKatoris: 0, dalKatoris: 0 },
-  dinner: { riceKatoris: 0, chapatis: 0, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: false },
+  lunch: { riceKatoris: 0, ricePanjaSpoons: 0, curryKatoris: 0, curryScoops: 0, dalKatoris: 0, dalScoops: 0 },
+  dinner: { riceKatoris: 0, ricePanjaSpoons: 0, chapatis: 0, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: false },
   extraFoods: {
     milk500ml: false,
     milk250ml: false,
@@ -447,21 +447,21 @@ export const HOSTEL_BREAKFAST_OPTIONS = [
   { id: 'poha', name: 'Poha with Peanuts', calories: 280, protein: 6, defaultServing: '1 medium plate' },
   { id: 'upma', name: 'Rava Upma with Chutney', calories: 300, protein: 6, defaultServing: '1 medium plate' },
   { id: 'pasta', name: 'Hostel Masala Pasta', calories: 350, protein: 10, defaultServing: '1 plate' },
-  { id: 'egg_curry_breakfast', name: 'Egg Curry (1 egg + gravy with bread/rice)', calories: 200, protein: 8, defaultServing: '1 bowl', hasCurryEgg: true }
+  { id: 'egg_curry_breakfast', name: 'Egg Curry (1 egg + gravy with bread/rice)', calories: 200, protein: 8, defaultServing: '1 scoop', hasCurryEgg: true }
 ];
 
 export const HOSTEL_LUNCH_COMPONENTS = [
-  { id: 'rice', name: 'Cooked White Rice', caloriesPerUnit: 180, proteinPerUnit: 3.8, unit: 'katori (~200ml)', defaultCount: 2 },
-  { id: 'veg_curry', name: 'Mixed Vegetable Curry / Sambar', caloriesPerUnit: 140, proteinPerUnit: 3.5, unit: 'katori', defaultCount: 1 },
-  { id: 'dal', name: 'Dal Tadka / Moong Dal', caloriesPerUnit: 150, proteinPerUnit: 7.0, unit: 'katori', defaultCount: 0 }
+  { id: 'rice', name: 'Cooked White Rice', caloriesPerUnit: 180, proteinPerUnit: 3.8, unit: 'panja spoon (~150g)', defaultCount: 2 },
+  { id: 'veg_curry', name: 'Mixed Vegetable Curry / Sambar', caloriesPerUnit: 140, proteinPerUnit: 3.5, unit: 'long-handle scoop', defaultCount: 1 },
+  { id: 'dal', name: 'Dal Tadka / Moong Dal', caloriesPerUnit: 150, proteinPerUnit: 7.0, unit: 'long-handle scoop', defaultCount: 0 }
 ];
 
 export const HOSTEL_DINNER_COMPONENTS = [
-  { id: 'rice_dinner', name: 'Cooked White Rice', caloriesPerUnit: 180, proteinPerUnit: 3.8, unit: 'katori', defaultCount: 1.5 },
+  { id: 'rice_dinner', name: 'Cooked White Rice', caloriesPerUnit: 180, proteinPerUnit: 3.8, unit: 'panja spoon (~150g)', defaultCount: 1.5 },
   { id: 'chapati', name: 'Wheat Chapati / Roti', caloriesPerUnit: 110, proteinPerUnit: 3.2, unit: 'piece', defaultCount: 2 },
   { id: 'chicken_curry', name: 'Chicken Curry (1 piece with gravy)', caloriesPerUnit: 260, proteinPerUnit: 18.0, unit: 'serving', defaultCount: 0 },
   { id: 'egg_curry_dinner', name: 'Egg Curry (1 egg in gravy)', caloriesPerUnit: 180, proteinPerUnit: 8.5, unit: 'serving (1 egg)', defaultCount: 0, hasCurryEgg: true },
-  { id: 'veg_curry_dinner', name: 'Vegetable Curry', caloriesPerUnit: 130, proteinPerUnit: 3.0, unit: 'katori', defaultCount: 1 }
+  { id: 'veg_curry_dinner', name: 'Vegetable Curry', caloriesPerUnit: 130, proteinPerUnit: 3.0, unit: 'long-handle scoop', defaultCount: 1 }
 ];
 
 // Offline & Verified Store Database for Mangaluru Central
@@ -620,8 +620,8 @@ export const FOOD_BASE_CATEGORIES = [
 ];
 
 export const PORTION_SIZES = [
-  { id: 'small_half_katori', label: 'Half Katori (~100ml)', volumeMl: 100, pieceCount: 1, desc: 'Small serving (cupped hand)' },
-  { id: 'standard_bowl', label: '1 Standard Bowl (~200ml)', volumeMl: 200, pieceCount: 2, desc: 'Standard hostel katori (fist size)' },
-  { id: 'heaping_plate', label: 'Large / Heaping Bowl (~350ml)', volumeMl: 350, pieceCount: 3, desc: 'Double serving (two open hands)' }
+  { id: 'small_half_katori', label: 'Half Scoop (~100ml)', volumeMl: 100, pieceCount: 1, desc: 'Half long-handle scoop' },
+  { id: 'standard_bowl', label: '1 Scoop / Panja (~200ml)', volumeMl: 200, pieceCount: 2, desc: '1 long-handle curry scoop (for 3 panja rice) or 1 panja spoon' },
+  { id: 'heaping_plate', label: 'Double Scoop / 2 Panja (~350ml)', volumeMl: 350, pieceCount: 3, desc: 'Double scoop or 2 panja spoons' }
 ];
 

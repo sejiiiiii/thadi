@@ -24,26 +24,31 @@ export default function WhatsAppExportModal({
   const breakfastCal = dailyLog?.breakfast?.calories || 0;
   const breakfastPro = dailyLog?.breakfast?.protein || 0;
 
+  const lunchRice = (dailyLog?.lunch?.ricePanjaSpoons ?? dailyLog?.lunch?.riceKatoris) || 0;
+  const lunchCurry = (dailyLog?.lunch?.curryScoops ?? dailyLog?.lunch?.curryKatoris) || 0;
+  const lunchDal = (dailyLog?.lunch?.dalScoops ?? dailyLog?.lunch?.dalKatoris) || 0;
+  const dinnerRice = (dailyLog?.dinner?.ricePanjaSpoons ?? dailyLog?.dinner?.riceKatoris) || 0;
+
   const lunchCal = Math.round(
-    ((dailyLog?.lunch?.riceKatoris || 0) * 180) + 
-    ((dailyLog?.lunch?.curryKatoris || 0) * 140) + 
-    ((dailyLog?.lunch?.dalKatoris || 0) * 150)
+    (lunchRice * 180) + 
+    (lunchCurry * 140) + 
+    (lunchDal * 150)
   );
   const lunchPro = parseFloat((
-    ((dailyLog?.lunch?.riceKatoris || 0) * 3.8) + 
-    ((dailyLog?.lunch?.curryKatoris || 0) * 3.5) + 
-    ((dailyLog?.lunch?.dalKatoris || 0) * 7.0)
+    (lunchRice * 3.8) + 
+    (lunchCurry * 3.5) + 
+    (lunchDal * 7.0)
   ).toFixed(1));
 
   const dinnerCal = Math.round(
-    ((dailyLog?.dinner?.riceKatoris || 0) * 180) + 
+    (dinnerRice * 180) + 
     ((dailyLog?.dinner?.chapatis || 0) * 110) + 
     (dailyLog?.dinner?.hasChickenCurry ? 260 : 0) + 
     (dailyLog?.dinner?.hasEggCurry ? 180 : 0) + 
     (dailyLog?.dinner?.hasVegCurry ? 130 : 0)
   );
   const dinnerPro = parseFloat((
-    ((dailyLog?.dinner?.riceKatoris || 0) * 3.8) + 
+    (dinnerRice * 3.8) + 
     ((dailyLog?.dinner?.chapatis || 0) * 3.2) + 
     (dailyLog?.dinner?.hasChickenCurry ? 18.0 : 0) + 
     (dailyLog?.dinner?.hasEggCurry ? 8.5 : 0) + 
@@ -85,8 +90,8 @@ export default function WhatsAppExportModal({
 ━━━━━━━━━━━━━━━━━━━━
 🍳 *Meals Breakdown:*
 ${breakfastStatus}
-• Lunch: ${dailyLog?.lunch?.riceKatoris || 0} rice, ${dailyLog?.lunch?.curryKatoris || 0} curry, ${dailyLog?.lunch?.dalKatoris || 0} dal (${lunchCal} kcal)
-• Dinner: ${dailyLog?.dinner?.riceKatoris || 0} rice, ${dailyLog?.dinner?.chapatis || 0} roti (${dinnerCal} kcal)
+• Lunch: ${lunchRice} panja spoons rice, ${lunchCurry} scoops curry, ${lunchDal} scoops dal (${lunchCal} kcal)
+• Dinner: ${dinnerRice} panja spoons rice, ${dailyLog?.dinner?.chapatis || 0} roti (${dinnerCal} kcal)
 ━━━━━━━━━━━━━━━━━━━━
 🥛 *Daily Staples Check:*
 • Nandini Milk: ${dailyLog?.extraFoods?.milk500ml ? '✅ 500ml' : (dailyLog?.extraFoods?.milk250ml ? '✅ 250ml' : '❌ Missed')}
