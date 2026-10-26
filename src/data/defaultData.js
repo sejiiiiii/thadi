@@ -88,6 +88,189 @@ export const SOMATOTYPE_INFO = {
 };
 
 // Curated Mangalore Extra Bulking Plan Preset (Context Document §3 & §4)
+export const DEFAULT_SAVED_DISHES = [
+  // Breakfasts
+  {
+    id: 'dish_bread_omelette',
+    name: 'Bread Omelette (2 eggs + 2 slices)',
+    category: 'Breakfast',
+    portion: '1 serving (2 slices + 2 eggs)',
+    calories: 320,
+    protein: 15.0,
+    isEggCurry: false,
+    notes: 'Quick hostel breakfast / street stall'
+  },
+  {
+    id: 'dish_egg_bhurji_pav',
+    name: 'Egg Bhurji (2 eggs) with Bread / Pav',
+    category: 'Breakfast',
+    portion: '1 plate',
+    calories: 310,
+    protein: 14.5,
+    isEggCurry: false,
+    notes: '2 scrambled eggs with onion & spices'
+  },
+  {
+    id: 'dish_puttu_kadala',
+    name: 'Puttu with Kadala Curry',
+    category: 'Breakfast',
+    portion: '1 cup puttu + 1 bowl kadala',
+    calories: 390,
+    protein: 11.5,
+    isEggCurry: false,
+    notes: 'Kerala/coastal staple with black chickpeas'
+  },
+  {
+    id: 'dish_neer_dosa',
+    name: 'Neer Dosa (3 pieces) with Chutney',
+    category: 'Breakfast',
+    portion: '3 pieces',
+    calories: 260,
+    protein: 4.5,
+    isEggCurry: false,
+    notes: 'Mangalorean light rice crepes'
+  },
+  {
+    id: 'dish_oats_milk_banana',
+    name: 'Oats with Milk & Sliced Banana',
+    category: 'Breakfast',
+    portion: '1 bowl (~250ml)',
+    calories: 350,
+    protein: 12.0,
+    isEggCurry: false,
+    notes: 'Quick kettle breakfast in hostel room'
+  },
+  // Curries & Gravies (Lunch / Dinner)
+  {
+    id: 'dish_dal_tadka',
+    name: 'Hostel Dal Tadka / Yellow Dal',
+    category: 'Curries / Dal',
+    portion: '1 katori (~200ml)',
+    calories: 160,
+    protein: 7.5,
+    isEggCurry: false,
+    notes: 'Thick yellow lentils with jeera garlic tadka'
+  },
+  {
+    id: 'dish_chana_masala',
+    name: 'Chana Masala / Chickpea Curry',
+    category: 'Curries / Dal',
+    portion: '1 katori (~200ml)',
+    calories: 210,
+    protein: 9.0,
+    isEggCurry: false,
+    notes: 'High fiber and plant protein'
+  },
+  {
+    id: 'dish_rajma_masala',
+    name: 'Rajma Masala (Kidney Beans Curry)',
+    category: 'Curries / Dal',
+    portion: '1 katori (~200ml)',
+    calories: 220,
+    protein: 9.5,
+    isEggCurry: false,
+    notes: 'Protein-rich legume curry'
+  },
+  {
+    id: 'dish_soya_curry',
+    name: 'Soya Chunks Curry / Gravy',
+    category: 'Curries / Dal',
+    portion: '1 katori (~200ml)',
+    calories: 180,
+    protein: 16.0,
+    isEggCurry: false,
+    notes: 'Hostel mess soya curry or kettle prepared'
+  },
+  {
+    id: 'dish_paneer_curry',
+    name: 'Paneer Masala / Matar Paneer',
+    category: 'Curries / Dal',
+    portion: '1 katori (~200ml)',
+    calories: 260,
+    protein: 11.0,
+    isEggCurry: false,
+    notes: 'Hostel special veg menu'
+  },
+  {
+    id: 'dish_chicken_sukka',
+    name: 'Mangalore Chicken Sukka',
+    category: 'Non-Veg',
+    portion: '1 plate / serving',
+    calories: 250,
+    protein: 21.0,
+    isEggCurry: false,
+    notes: 'Dry coconut roasted chicken'
+  },
+  {
+    id: 'dish_fish_curry',
+    name: 'Mangalorean Fish Curry (Meen Gassi)',
+    category: 'Non-Veg',
+    portion: '1 bowl with 1 piece fish',
+    calories: 190,
+    protein: 17.0,
+    isEggCurry: false,
+    notes: 'Coconut tamarind gravy with mackerel / sardine'
+  },
+  {
+    id: 'dish_egg_curry_hostel',
+    name: 'Mess Egg Curry (2 eggs in gravy)',
+    category: 'Non-Veg',
+    portion: '1 bowl (2 eggs)',
+    calories: 230,
+    protein: 14.0,
+    isEggCurry: true,
+    notes: '2 boiled eggs in spicy onion-tomato gravy'
+  },
+  // Snacks & Add-ons
+  {
+    id: 'dish_peanut_butter_toast',
+    name: 'Peanut Butter Toast (2 slices + 32g PB)',
+    category: 'Snacks',
+    portion: '2 slices',
+    calories: 340,
+    protein: 13.0,
+    isEggCurry: false,
+    notes: 'Calorie-dense hostel bulking snack'
+  },
+  {
+    id: 'dish_sprouts_salad',
+    name: 'Moong Sprouts Usli / Chaat',
+    category: 'Snacks',
+    portion: '1 cup (~150g)',
+    calories: 150,
+    protein: 9.0,
+    isEggCurry: false,
+    notes: 'Light protein snack with lime & salt'
+  },
+  {
+    id: 'dish_roasted_chana_snack',
+    name: 'Roasted Chana / Bhuna Chana (50g)',
+    category: 'Snacks',
+    portion: '1 fistful (~50g)',
+    calories: 190,
+    protein: 10.5,
+    isEggCurry: false,
+    notes: 'Crunchy dry hostel snack, high protein'
+  }
+];
+
+// Helper to create an empty, unlogged clean daily log (all 0s)
+export const createEmptyDailyLog = () => ({
+  breakfast: { name: '', calories: 0, protein: 0, isCustom: false, isEggCurry: false },
+  lunch: { riceKatoris: 0, curryKatoris: 0, dalKatoris: 0 },
+  dinner: { riceKatoris: 0, chapatis: 0, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: false },
+  extraFoods: {
+    milk500ml: false,
+    milk250ml: false,
+    bananasCount: 0,
+    peanuts30g: false,
+    soyaChunks30g: false
+  },
+  standaloneEggs: 0,
+  customItems: []
+});
+
+// Curated Mangalore Extra Bulking Plan Preset (Context Document §3 & §4)
 export const MANGALORE_CURATED_PRESET = [
   {
     id: 'nandini_toned_milk',

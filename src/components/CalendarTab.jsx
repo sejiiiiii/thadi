@@ -78,8 +78,9 @@ export default function CalendarTab({
     const soyaCal = log.extraFoods?.soyaChunks30g ? 105 : 0;
     const soyaPro = log.extraFoods?.soyaChunks30g ? 15.5 : 0;
 
-    const customCal = (log.customItems || []).reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
-    const customPro = (log.customItems || []).reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
+    const nonBreakfastCustom = (log.customItems || []).filter(it => it.meal !== 'breakfast');
+    const customCal = nonBreakfastCustom.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+    const customPro = nonBreakfastCustom.reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
 
     const totalCal = bCal + lCal + dCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal + customCal;
     const totalPro = parseFloat((bPro + lPro + dPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro + customPro).toFixed(1));
@@ -218,7 +219,7 @@ export default function CalendarTab({
                     {dayNum}
                   </span>
 
-                  {totals ? (
+                  {totals && totals.totalCal > 0 ? (
                     <div className="flex items-center gap-0.5">
                       <div className={`w-1.5 h-1.5 rounded-full ${totals.metSurplus ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                     </div>
@@ -266,7 +267,7 @@ export default function CalendarTab({
             )}
           </div>
 
-          {selectedDayData ? (
+          {selectedDayData && selectedDayData.totalCal > 0 ? (
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="bg-slate-900/70 p-3 rounded-2xl border border-white/[0.06]">
                 <div className="flex items-center gap-1 text-slate-400 text-[11px]">
@@ -290,7 +291,7 @@ export default function CalendarTab({
             </div>
           ) : (
             <div className="py-4 text-center text-xs text-slate-500">
-              No meals logged on this date yet. Tap the <strong>Today</strong> tab to record intake.
+              No meals logged on this date yet (0 kcal). Tap the <strong>Tracker</strong> tab to record intake.
             </div>
           )}
         </div>

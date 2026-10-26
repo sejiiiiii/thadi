@@ -62,26 +62,35 @@ export default function WhatsAppExportModal({
   const soyaCal = dailyLog?.extraFoods?.soyaChunks30g ? 105 : 0;
   const soyaPro = dailyLog?.extraFoods?.soyaChunks30g ? 15.5 : 0;
 
-  const customCal = (dailyLog?.customItems || []).reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
-  const customPro = (dailyLog?.customItems || []).reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
+  const customItemsList = (dailyLog?.customItems || []).filter(it => it.meal !== 'breakfast');
+  const customCal = customItemsList.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customPro = customItemsList.reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
 
   const totalCal = breakfastCal + lunchCal + dinnerCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal + customCal;
   const totalPro = parseFloat((breakfastPro + lunchPro + dinnerPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro + customPro).toFixed(1));
 
-  const customItemsList = dailyLog?.customItems || [];
+  const breakfastStatus = dailyLog?.breakfast?.name && dailyLog?.breakfast?.calories > 0
+    ? `• Breakfast: ${dailyLog.breakfast.name} (${dailyLog.breakfast.calories} kcal, ${dailyLog.breakfast.protein}g pro)${dailyLog.breakfast.isCustom ? ' [Custom]' : ''}`
+    : '• Breakfast: Skipped / Not Logged';
+
   const customItemsText = customItemsList.length > 0 
-    ? `\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Custom Added Dishes:*\n` + customItemsList.map(it => `• [${(it.meal || 'extra').toUpperCase()}] ${it.name} (${it.portion}): +${it.calories} kcal, +${it.protein}g`).join('\n')
+    ? `\n━━━━━━━━━━━━━━━━━━━━\n🍽️ *Custom Added Dishes / Curries:*\n` + customItemsList.map(it => `• [${(it.meal || 'extra').toUpperCase()}] ${it.name} (${it.portion}): +${it.calories} kcal, +${it.protein}g`).join('\n')
     : '';
 
   const summaryText = `*Thadi (തടി) Bulking Log — ${todayStr}* 🏋️‍♂️
 ━━━━━━━━━━━━━━━━━━━━
 🔥 *Calories:* ${totalCal} / ${targetCalories} kcal (${Math.round((totalCal / targetCalories) * 100)}%)
 💪 *Protein:* ${totalPro} / ${targetProtein}g (${Math.round((totalPro / targetProtein) * 100)}%)
-🥚 *Eggs:* ${(dailyLog?.standaloneEggs || 0) + (dailyLog?.dinner?.hasEggCurry ? 1 : 0)} / 3 daily eggs
+🥚 *Eggs:* ${(dailyLog?.standaloneEggs || 0) + (dailyLog?.dinner?.hasEggCurry ? 1 : 0) + (dailyLog?.breakfast?.isEggCurry ? 1 : 0)} / 3 daily eggs
+━━━━━━━━━━━━━━━━━━━━
+🍳 *Meals Breakdown:*
+${breakfastStatus}
+• Lunch: ${dailyLog?.lunch?.riceKatoris || 0} rice, ${dailyLog?.lunch?.curryKatoris || 0} curry, ${dailyLog?.lunch?.dalKatoris || 0} dal (${lunchCal} kcal)
+• Dinner: ${dailyLog?.dinner?.riceKatoris || 0} rice, ${dailyLog?.dinner?.chapatis || 0} roti (${dinnerCal} kcal)
 ━━━━━━━━━━━━━━━━━━━━
 🥛 *Daily Staples Check:*
 • Nandini Milk: ${dailyLog?.extraFoods?.milk500ml ? '✅ 500ml' : (dailyLog?.extraFoods?.milk250ml ? '✅ 250ml' : '❌ Missed')}
-• Bananas: ${(dailyLog?.extraFoods?.bananasCount || 0) >= 2 ? `✅ ${dailyLog?.extraFoods?.bananasCount} pcs` : '❌ Missed'}
+• Bananas: ${(dailyLog?.extraFoods?.bananasCount || 0) >= 2 ? `✅ ${dailyLog?.extraFoods?.bananasCount} pcs` : (dailyLog?.extraFoods?.bananasCount ? `⚠️ ${dailyLog?.extraFoods?.bananasCount} pcs` : '❌ Missed')}
 • Peanuts: ${dailyLog?.extraFoods?.peanuts30g ? '✅ 30g' : '❌ Missed'}
 • Soya Chunks: ${dailyLog?.extraFoods?.soyaChunks30g ? '✅ 30g (kettle steeped)' : '❌ Missed'}${customItemsText}
 ━━━━━━━━━━━━━━━━━━━━

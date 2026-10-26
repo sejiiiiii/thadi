@@ -8,7 +8,7 @@ import StoresHubTab from './components/StoresHubTab';
 import ProfileTab from './components/ProfileTab';
 import WhatsAppExportModal from './components/WhatsAppExportModal';
 
-import { DEFAULT_USER_PROFILE } from './data/defaultData';
+import { DEFAULT_USER_PROFILE, DEFAULT_SAVED_DISHES, createEmptyDailyLog } from './data/defaultData';
 import { calculateTDEEAndBulk } from './utils/nutritionEngine';
 import { auth, db, isConfigured } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -46,53 +46,60 @@ export default function App() {
     return saved ? Number(saved) : 2000;
   });
 
+  // Reusable Custom Dishes & Curries Library
+  const [savedDishes, setSavedDishes] = useState(() => {
+    const saved = localStorage.getItem('thadi_saved_dishes');
+    return saved ? JSON.parse(saved) : DEFAULT_SAVED_DISHES;
+  });
+
   // Master Daily Logs Store: { [dateKey]: logData }
   const [allDailyLogs, setAllDailyLogs] = useState(() => {
     const saved = localStorage.getItem('thadi_all_daily_logs');
-    if (saved) return JSON.parse(saved);
-
-    // Default starting today log
-    return {
-      [todayKey]: {
-        breakfast: { name: 'Dosa (3 medium) with Sambar', calories: 430, protein: 12, isEggCurry: false },
-        lunch: { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 },
-        dinner: { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true },
-        extraFoods: {
-          milk500ml: true,
-          milk250ml: false,
-          bananasCount: 2,
-          peanuts30g: true,
-          soyaChunks30g: true
-        },
-        standaloneEggs: 3
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Clean legacy pre-filled mock data from today if present
+        if (parsed[todayKey]) {
+          const t = parsed[todayKey];
+          const isOldMock = t.breakfast?.name === 'Dosa (3 medium) with Sambar' &&
+                            t.extraFoods?.milk500ml === true &&
+                            t.extraFoods?.peanuts30g === true &&
+                            t.extraFoods?.soyaChunks30g === true;
+          if (isOldMock) {
+            parsed[todayKey] = createEmptyDailyLog();
+          }
+        }
+        return parsed;
+      } catch (err) {
+        console.error("Error parsing logs from storage", err);
       }
+    }
+
+    // Default clean starting today log (starts completely at 0)
+    return {
+      [todayKey]: createEmptyDailyLog()
     };
   });
 
-  // Active day's log
-  const currentDailyLog = allDailyLogs[selectedDateKey] || {
-    breakfast: { name: 'Poori Bhaji', calories: 450, protein: 9, isEggCurry: false },
-    lunch: { riceKatoris: 2, curryKatoris: 1, dalKatoris: 0 },
-    dinner: { riceKatoris: 1.5, chapatis: 2, hasChickenCurry: false, hasEggCurry: false, hasVegCurry: true },
-    extraFoods: {
-      milk500ml: false,
-      milk250ml: false,
-      bananasCount: 0,
-      peanuts30g: false,
-      soyaChunks30g: false
-    },
-    standaloneEggs: 3
-  };
+  // Active day's log (Always clean 0 defaults for new/unlogged dates)
+  const currentDailyLog = allDailyLogs[selectedDateKey] || createEmptyDailyLog();
 
   const handleUpdateCurrentDayLog = (updater) => {
     setAllDailyLogs(prev => {
-      const existing = prev[selectedDateKey] || currentDailyLog;
+      const existing = prev[selectedDateKey] || createEmptyDailyLog();
       const updated = typeof updater === 'function' ? updater(existing) : updater;
       return {
         ...prev,
         [selectedDateKey]: updated
       };
     });
+  };
+
+  const handleResetCurrentDayLog = () => {
+    setAllDailyLogs(prev => ({
+      ...prev,
+      [selectedDateKey]: createEmptyDailyLog()
+    }));
   };
 
   // 1. Firebase Auth Listener
@@ -130,6 +137,10 @@ export default function App() {
         if (data.allDailyLogs) {
           setAllDailyLogs(data.allDailyLogs);
           localStorage.setItem('thadi_all_daily_logs', JSON.stringify(data.allDailyLogs));
+        }
+        if (data.savedDishes) {
+          setSavedDishes(data.savedDishes);
+          localStorage.setItem('thadi_saved_dishes', JSON.stringify(data.savedDishes));
         }
       }
     }, (err) => {
@@ -171,6 +182,13 @@ export default function App() {
       setDoc(doc(db, 'users', currentUser.uid), { allDailyLogs }, { merge: true }).catch(console.error);
     }
   }, [allDailyLogs, currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('thadi_saved_dishes', JSON.stringify(savedDishes));
+    if (currentUser && db) {
+      setDoc(doc(db, 'users', currentUser.uid), { savedDishes }, { merge: true }).catch(console.error);
+    }
+  }, [savedDishes, currentUser]);
 
   // Target Calculations
   const tdeeData = calculateTDEEAndBulk(userProfile);
@@ -219,8 +237,10 @@ export default function App() {
   const soyaCal = currentDailyLog.extraFoods?.soyaChunks30g ? 105 : 0;
   const soyaPro = currentDailyLog.extraFoods?.soyaChunks30g ? 15.5 : 0;
 
-  const customCal = (currentDailyLog.customItems || []).reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
-  const customPro = (currentDailyLog.customItems || []).reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
+  // Custom items for lunch, dinner, snack (excluding breakfast to prevent double counting if custom breakfast is logged)
+  const nonBreakfastCustomItems = (currentDailyLog.customItems || []).filter(it => it.meal !== 'breakfast');
+  const customCal = nonBreakfastCustomItems.reduce((acc, it) => acc + (Number(it.calories) || 0), 0);
+  const customPro = nonBreakfastCustomItems.reduce((acc, it) => acc + (Number(it.protein) || 0), 0);
 
   const todayCalories = bCal + lCal + dCal + eggCal + milkCal + bananaCal + peanutCal + soyaCal + customCal;
   const todayProtein = parseFloat((bPro + lPro + dPro + eggPro + milkPro + bananaPro + peanutPro + soyaPro + customPro).toFixed(1));
@@ -256,6 +276,9 @@ export default function App() {
             setSelectedDateKey={setSelectedDateKey}
             targetCalories={targetCalories}
             targetProtein={targetProtein}
+            savedDishes={savedDishes}
+            setSavedDishes={setSavedDishes}
+            onResetDay={handleResetCurrentDayLog}
             onOpenExport={() => setIsExportModalOpen(true)}
           />
         )}
