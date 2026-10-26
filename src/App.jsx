@@ -54,20 +54,15 @@ export default function App() {
 
   // Master Daily Logs Store: { [dateKey]: logData }
   const [allDailyLogs, setAllDailyLogs] = useState(() => {
+    const isV2Initialized = localStorage.getItem('thadi_v2_clean_init');
     const saved = localStorage.getItem('thadi_all_daily_logs');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Clean legacy pre-filled mock data from today if present
-        if (parsed[todayKey]) {
-          const t = parsed[todayKey];
-          const isOldMock = t.breakfast?.name === 'Dosa (3 medium) with Sambar' &&
-                            t.extraFoods?.milk500ml === true &&
-                            t.extraFoods?.peanuts30g === true &&
-                            t.extraFoods?.soyaChunks30g === true;
-          if (isOldMock) {
-            parsed[todayKey] = createEmptyDailyLog();
-          }
+        // If loading this clean release for the first time on mobile or browser, reset today to 0s
+        if (!isV2Initialized || (parsed[todayKey] && parsed[todayKey].extraFoods?.milk500ml && parsed[todayKey].extraFoods?.peanuts30g)) {
+          parsed[todayKey] = createEmptyDailyLog();
+          localStorage.setItem('thadi_v2_clean_init', 'true');
         }
         return parsed;
       } catch (err) {
@@ -75,6 +70,7 @@ export default function App() {
       }
     }
 
+    localStorage.setItem('thadi_v2_clean_init', 'true');
     // Default clean starting today log (starts completely at 0)
     return {
       [todayKey]: createEmptyDailyLog()
